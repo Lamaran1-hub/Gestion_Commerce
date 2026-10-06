@@ -1,0 +1,12 @@
+# À utiliser seulement si public_html ne peut pas pointer vers le dossier public.
+# Copier ce fichier sous le nom .htaccess à la racine du projet.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Fichiers cachés (.env, .git…) refusés ; tout le reste passe par le dossier public
+    RewriteRule (^|/)\.(?!well-known/) - [F,L]
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+# Empêche la lecture directe des fichiers sensibles
+<FilesMatch "^\.env|composer\.(json|lock)$">
+    Require all denied
+</FilesMatch>

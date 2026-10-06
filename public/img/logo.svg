@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Logo">
+  <rect width="64" height="64" rx="14" fill="#1F6F54"/>
+  <path d="M14 26 18 16h28l4 10" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M14 26c0 3.3 2.7 6 6 6s6-2.7 6-6c0 3.3 2.7 6 6 6s6-2.7 6-6c0 3.3 2.7 6 6 6s6-2.7 6-6" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M18 34v14h28V34" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="28" y="38" width="8" height="10" rx="1" fill="#F2B233"/>
+</svg>

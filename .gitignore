@@ -1,0 +1,20 @@
+/vendor
+/node_modules
+/public/storage
+/storage/*.key
+.env
+.env.backup
+.phpunit.result.cache
+database/*.sqlite
+
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+/tests/e2e/videos
+
+# Fichiers générés (ne pas versionner)
+/graphify-out
+/tests/e2e/captures
+/tests/e2e/scenarios
+/tests/e2e/resultats.json
