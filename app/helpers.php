@@ -113,7 +113,7 @@ if (! function_exists('fonction')) {
 if (! function_exists('libelle_mode')) {
     function libelle_mode(?string $mode): string
     {
-        return config('gestion.modes_paiement')[$mode] ?? match ($mode) { 'fidelite' => 'Points de fidélité', 'avoir' => 'Avoir client', 'acompte' => 'Acompte déjà versé', 'carte_cadeau' => 'Carte cadeau', 'avoir_fournisseur' => 'Avoir fournisseur', default => (string) $mode };
+        return config('gestion.modes_paiement')[$mode] ?? match ($mode) { 'fidelite' => 'Points de fidélité', 'avoir' => 'Avoir client', 'acompte' => 'Acompte déjà versé', 'carte_cadeau' => 'Carte cadeau', 'echange' => 'Bon d\'échange', 'avoir_fournisseur' => 'Avoir fournisseur', default => (string) $mode };
     }
 }
 

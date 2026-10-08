@@ -107,7 +107,7 @@
                         @foreach ($clients as $c)
                             @php($d = \App\Support\ClientCaisse::donnees($c, $dettes[$c->id] ?? null))
                             <option value="{{ $d['id'] }}" data-grossiste="{{ $d['grossiste'] }}" data-points="{{ $d['points'] }}" data-avoir="{{ $d['avoir'] }}" data-anniv="{{ $d['anniv'] }}"
-                                    data-du="{{ $d['du'] }}" data-plafond="{{ $d['plafond'] }}" data-retard="{{ $d['retard'] }}" @selected(old('client_id') == $c->id)>{{ $d['libelle'] }}</option>
+                                    data-du="{{ $d['du'] }}" data-plafond="{{ $d['plafond'] }}" data-retard="{{ $d['retard'] }}" @selected($clientChoisi === $c->id)>{{ $d['libelle'] }}</option>
                         @endforeach
                     </select>
                     @if ($peutCreerClient)
@@ -121,6 +121,18 @@
                 @endif
                 <input type="hidden" name="attente_id" value="{{ old('attente_id') }}">
                 @if (old('attente_id'))<div class="alert alert-info py-1 small mb-2"><i class="bi bi-pause-circle me-1"></i>Ticket en attente repris.</div>@endif
+                @if ($echange && ! $proforma)
+                    {{-- Échange : le bon issu du retour paie les nouveaux articles --}}
+                    <input type="hidden" name="echange_id" value="{{ $echange->id }}">
+                    <div class="alert alert-success py-2 small mb-2" id="blocEchange" data-solde="{{ $echange->echange_restant }}">
+                        <div class="d-flex justify-content-between gap-2 flex-wrap">
+                            <strong><i class="bi bi-arrow-left-right me-1"></i>Échange {{ $echange->numero }} : bon de {{ gnf($echange->echange_restant) }}</strong>
+                            <a href="{{ route('ventes.show', $echange->vente_id) }}" class="small">Vente {{ $echange->vente?->numero }}</a>
+                        </div>
+                        <div class="text-doux">Rapporté : {{ $echange->lignes->map(fn ($l) => qte($l->quantite).' × '.$l->designation)->join(', ') }}</div>
+                        <div class="fw-semibold mt-1" id="etatEchange" aria-live="polite">Ajoutez les articles que le client prend à la place.</div>
+                    </div>
+                @endif
                 <div id="lignes"><p class="text-doux small my-3" id="ticketVide">Cliquez sur un produit ou scannez son code-barres.</p></div>
                 <div id="champsLignes"></div>
 
@@ -542,6 +554,16 @@
                 + (carte ? `<br><span class="text-success">Payé avec la carte : ${gnf(carte)} — reste ${gnf(t.total - points - avoir - carte)}</span>` : '');
         }
         avoir += carte;   // la suite du calcul traite la carte comme un règlement déjà fait
+        // Bon d'échange : paie ce qui reste ; s'il vaut plus que les nouveaux articles, la différence est rendue en espèces
+        if ($('blocEchange')) {
+            const soldeBon = Number($('blocEchange').dataset.solde);
+            const parBon = Math.min(soldeBon, Math.max(0, t.total - points - avoir));
+            const resteBon = soldeBon - parBon;
+            $('etatEchange').innerHTML = !lignes.length ? 'Ajoutez les articles que le client prend à la place.'
+                : `Payé avec le bon : ${gnf(parBon)}` + (resteBon > 0 ? `<br><span class="text-warning-emphasis">Reste du bon rendu en espèces au client : ${gnf(resteBon)}</span>`
+                    : (t.total - points - avoir - parBon > 0 ? ` — le client paie la différence : ${gnf(t.total - points - avoir - parBon)}` : ''));
+            avoir += parBon;
+        }
         // Autres moyens (paiement mixte) : déduits avant le moyen principal
         let autres = 0;
         document.querySelectorAll('.autre-paiement').forEach((row, i) => {
@@ -674,6 +696,7 @@
         if ($('utiliser_points')?.checked) return erreur('Les points de fidélité ne sont pas utilisables hors connexion.');
         if ($('carte_cadeau').value.trim()) return erreur('Les cartes cadeaux ne sont pas utilisables hors connexion.');
         if (!$('blocAvoir').classList.contains('d-none') && $('utiliser_avoir').checked) return erreur('L\'avoir du client n\'est pas utilisable hors connexion.');
+        if ($('blocEchange')) return erreur('Un échange a besoin de la connexion : réessayez dès qu\'elle revient.');
         const autres = [...document.querySelectorAll('.autre-paiement')].map(r => ({
             mode: r.querySelector('[data-champ=mode]').value, montant: nombre(r.querySelector('[data-champ=montant]').value),
             reference: r.querySelector('[data-champ=reference]').value || null })).filter(p => p.montant > 0);

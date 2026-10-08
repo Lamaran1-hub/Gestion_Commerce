@@ -61,7 +61,10 @@ class VenteController extends Controller
         }
 
         // Clients : tous pour une petite boutique ; au-delà, ceux qu'on sert le plus souvent, les autres se cherchent
-        [$clients, $clientsTous, $nbClients] = \App\Support\ClientCaisse::precharges(old('client_id') ? (int) old('client_id') : null);
+        // Échange en cours (retour converti en bon) ou client choisi d'avance (retour en avoir)
+        $echange = app(\App\Services\Echanges::class)->bon((int) (old('echange_id') ?: request()->integer('echange')))?->load('lignes', 'vente');
+        $clientChoisi = (int) (old('client_id') ?: request()->integer('client')) ?: null;
+        [$clients, $clientsTous, $nbClients] = \App\Support\ClientCaisse::precharges($clientChoisi);
 
         return view('ventes.caisse', [
             'produits' => $produits,
@@ -69,6 +72,8 @@ class VenteController extends Controller
             'clients' => $clients,
             'clientsTous' => $clientsTous,
             'nbClients' => $nbClients,
+            'echange' => $echange,
+            'clientChoisi' => $clientChoisi,
             // Dette de chaque client : la caisse prévient avant de dépasser le plafond ou le délai de crédit
             'dettes' => \App\Support\ClientCaisse::dettes($clientsTous ? null : $clients->pluck('id')),
         ]);
@@ -114,6 +119,7 @@ class VenteController extends Controller
             'utiliser_points' => ['nullable', 'boolean'],
             'utiliser_avoir' => ['nullable', 'boolean'],
             'carte_cadeau' => ['nullable', 'string', 'max:20'],
+            'echange_id' => ['nullable', 'integer'],
             'echeance' => ['nullable', 'date'],
             'paiements_autres' => ['nullable', 'array', 'max:5'],
             'paiements_autres.*.mode' => ['required_with:paiements_autres.*.montant', Rule::in(array_keys(config('gestion.modes_paiement')))],
@@ -132,9 +138,14 @@ class VenteController extends Controller
         if ($request->filled('attente_id')) {
             VenteEnAttente::whereKey($request->integer('attente_id'))->delete();   // ticket repris puis vendu
         }
+        // Échange : le bon valait plus que les nouveaux articles, la différence a été rendue en espèces
+        $bon = $request->filled('echange_id') ? \App\Models\Retour::where('echange_vente_id', $vente->id)->first() : null;
+        $resteRendu = $bon ? (int) -\App\Models\Paiement::where('vente_id', $bon->vente_id)->where('mode', 'especes')
+            ->where('reference', "Reste du bon {$bon->numero} (échange {$vente->numero})")->sum('montant') : 0;
 
         return redirect()->route('ventes.show', ['vente' => $vente, 'imprimer' => 1])
-            ->with('succes', "Vente {$vente->numero} enregistrée.");
+            ->with('succes', "Vente {$vente->numero} enregistrée.".($bon ? " Échange {$bon->numero} effectué." : '')
+                .($resteRendu > 0 ? ' Rendez '.gnf($resteRendu).' au client (reste du bon d\'échange).' : ''));
     }
 
     /**
@@ -245,7 +256,7 @@ class VenteController extends Controller
 
     public function show(Vente $vente)
     {
-        $vente->load(['lignes.produit', 'lignes.numerosSerie', 'client', 'vendeur', 'paiements.caissier', 'retours.lignes', 'retours.auteur']);
+        $vente->load(['lignes.produit', 'lignes.numerosSerie', 'client', 'vendeur', 'paiements.caissier', 'retours.lignes', 'retours.auteur', 'retours.venteEchange']);
 
         return view('ventes.show', compact('vente'));
     }
@@ -260,11 +271,18 @@ class VenteController extends Controller
             'series_retour.*' => ['array'],
             'motif' => ['required', 'string', 'max:150'],
             'motif_autre' => ['nullable', 'string', 'max:150'],
-            'mode_remboursement' => ['required', Rule::in([...array_keys(config('gestion.modes_paiement')), \App\Services\Avoirs::MODE])],
+            'mode_remboursement' => ['required', Rule::in([...array_keys(config('gestion.modes_paiement')), \App\Services\Avoirs::MODE, \App\Services\Echanges::MODE])],
         ], ['motif.required' => 'Indiquez le motif du retour.']);
 
         $retour = $retours->enregistrer($vente, $request->quantites, choix_autre('motif'), $request->mode_remboursement, $request->user(), $request->input('series_retour', []));
 
+        if ($request->mode_remboursement === \App\Services\Echanges::MODE) {
+            // Échange : on passe directement en caisse, le bon paie les nouveaux articles
+            return redirect()->route('ventes.create', array_filter(['echange' => $retour->echange_restant > 0 ? $retour->id : null, 'client' => $vente->client_id]))
+                ->with('succes', "Retour {$retour->numero} enregistré : ".gnf($retour->montant).' de marchandise remise en stock. '
+                    .($retour->echange_restant > 0 ? 'Bon d\'échange de '.gnf($retour->echange_restant).' : ajoutez les articles que le client prend à la place.'
+                        : 'Rien n\'avait été payé : le montant est déduit de sa dette. Ajoutez les articles que le client prend à la place.'));
+        }
         if ($retour->mode_remboursement === \App\Services\Avoirs::MODE) {
             session()->flash('bon_avoir', route('retours.bon-avoir', $retour));
         }

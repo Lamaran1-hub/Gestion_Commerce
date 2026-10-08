@@ -57,7 +57,7 @@ class ClotureCaisse extends Model
      * Modes qui ne sont pas de l'argent encaissé ce jour-là : affichés à part, hors total.
      * Carte cadeau : l'argent est entré le jour où la carte a été vendue, pas quand elle est dépensée.
      */
-    public const HORS_ARGENT = ['fidelite', 'avoir', 'carte_cadeau'];
+    public const HORS_ARGENT = ['fidelite', 'avoir', 'carte_cadeau', 'echange'];
 
     public function totalEncaisse(): int
     {

@@ -79,19 +79,30 @@ class VenteService
                 }
                 $parCarte = $cartes->utilisable($carte, $ttc - $acompte - $points - $avoir);
             }
+            // Échange : le bon issu du retour paie les nouveaux articles (le reste éventuel est rendu en espèces)
+            $bon = null;
+            $parBon = 0;
+            if (! empty($donnees['echange_id'])) {
+                if ($horsLigne) {
+                    throw new OperationRefusee('Un échange ne se fait pas hors connexion.');
+                }
+                $bon = app(Echanges::class)->bon((int) $donnees['echange_id'], verrouiller: true)
+                    ?? throw new OperationRefusee('Ce bon d\'échange a déjà été utilisé ou n\'existe pas.');
+                $parBon = min($bon->echange_restant, max(0, $ttc - $acompte - $points - $avoir - $parCarte));
+            }
             // Paiement mixte : autres moyens d'abord (Orange Money, carte…), puis le moyen principal pour le reste.
             // Un paiement électronique ne rend pas de monnaie : les autres moyens ne peuvent pas dépasser le montant dû.
             $autres = collect($donnees['paiements_autres'] ?? [])
                 ->map(fn ($p) => ['mode' => $p['mode'] ?? 'especes', 'montant' => (int) ($p['montant'] ?? 0), 'reference' => $p['reference'] ?? null])
                 ->filter(fn ($p) => $p['montant'] > 0)->values();
             $totalAutres = (int) $autres->sum('montant');
-            $avantAutres = $ttc - $acompte - $points - $avoir - $parCarte;
+            $avantAutres = $ttc - $acompte - $points - $avoir - $parCarte - $parBon;
             if ($totalAutres > $avantAutres) {
                 throw new OperationRefusee('Les paiements saisis ('.gnf($totalAutres).') dépassent le montant dû ('.gnf($avantAutres).').');
             }
             $recu = max(0, (int) ($donnees['montant_recu'] ?? $avantAutres - $totalAutres));
             $paye = min($recu, $avantAutres - $totalAutres);
-            $regle = $acompte + $points + $avoir + $parCarte + $totalAutres + $paye;
+            $regle = $acompte + $points + $avoir + $parCarte + $parBon + $totalAutres + $paye;
             if ($horsLigne && $regle < $ttc) {
                 throw new OperationRefusee('Vente hors connexion non payée entièrement ('.gnf($regle).' sur '.gnf($ttc).') : le crédit n\'est pas possible sans connexion.');
             }
@@ -159,6 +170,12 @@ class VenteService
             if ($parCarte > 0) {
                 app(CartesCadeaux::class)->utiliser($carte, $vente, $parCarte);
                 $this->enregistrerPaiement($vente, $parCarte, CartesCadeaux::MODE, 'Carte '.$carte->codeMasque(), $date);
+            }
+            if ($bon) {
+                if ($parBon > 0) {
+                    $this->enregistrerPaiement($vente, $parBon, Echanges::MODE, "Bon d'échange {$bon->numero}", $date);
+                }
+                app(Echanges::class)->utiliser($bon, $vente, $parBon);
             }
             foreach ($autres as $p) {
                 $this->enregistrerPaiement($vente, $p['montant'], $p['mode'], $p['reference'], $date);
@@ -239,8 +256,8 @@ class VenteService
                 throw new OperationRefusee('Cette vente a été livrée le '.$v->livree_le->format('d/m/Y')." : la marchandise est chez le client. Faites un retour de marchandise plutôt qu'une annulation.");
             }
             // Des articles ont déjà été repris en avoir : l'annulation rembourserait deux fois
-            if (app(Avoirs::class)->avoirEmisSur($v)) {
-                throw new OperationRefusee('Des articles de cette vente ont déjà été repris en avoir : faites un retour des articles restants plutôt qu\'une annulation.');
+            if (app(Avoirs::class)->avoirEmisSur($v) || app(Echanges::class)->emisSur($v)) {
+                throw new OperationRefusee('Des articles de cette vente ont déjà été repris en avoir ou en bon d\'échange : faites un retour des articles restants plutôt qu\'une annulation.');
             }
             boutique()?->verifierPeriodeOuverte($v->date_vente, 'annuler cette vente');
             // Une annulation rend l'argent au client : impossible depuis une caisse déjà clôturée
@@ -269,6 +286,7 @@ class VenteService
             app(Avoirs::class)->annulerVente($v);
             app(Acomptes::class)->annulerVente($v);
             app(CartesCadeaux::class)->annulerVente($v);
+            app(Echanges::class)->annulerVente($v);
             app(Registre::class)->inscrire($v->boutique_id, 'annulation', $v->id,
                 ['vente_id' => $v->id, 'numero' => $v->numero, 'motif' => $motif, 'date' => now()->format('Y-m-d H:i:s'), 'user_id' => auth()->id()]);
             JournalActivite::noter('annulation', "Annulation de la vente {$v->numero} : {$motif}");
@@ -425,7 +443,7 @@ class VenteService
             'vente_id' => $vente->id,
             'client_id' => $vente->client_id,
             'montant' => $montant,
-            'mode' => array_key_exists($mode, config('gestion.modes_paiement')) || in_array($mode, [Fidelite::MODE, Avoirs::MODE, Acomptes::MODE, CartesCadeaux::MODE], true) ? $mode : 'especes',
+            'mode' => array_key_exists($mode, config('gestion.modes_paiement')) || in_array($mode, [Fidelite::MODE, Avoirs::MODE, Acomptes::MODE, CartesCadeaux::MODE, Echanges::MODE], true) ? $mode : 'especes',
             'reference' => $reference,
             'date_paiement' => $date ?? now(),
             'user_id' => auth()->id(),

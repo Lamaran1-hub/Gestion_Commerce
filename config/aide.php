@@ -162,6 +162,19 @@ return [
             ],
             'lien' => 'ventes.index', 'permission' => 'ventes.voir'],
 
+        'echange' => ['rubrique' => 'caisse', 'titre' => 'Échanger un article contre un autre',
+            'mots' => 'échange echanger changer taille couleur article défectueux reprendre autre produit différence bon d échange',
+            'resume' => 'Le client rapporte un article et en prend un autre : il ne paie (ou ne récupère) que la différence, sans fiche client obligatoire.',
+            'etapes' => [
+                'Ouvrez la vente d\'origine (Ventes, ou scannez le ticket), « Retour de marchandise » : indiquez les quantités rapportées et le motif.',
+                'Comme remboursement, choisissez « Échange : le client prend d\'autres articles ». La marchandise rapportée revient en stock.',
+                'La caisse s\'ouvre avec un bandeau vert « Échange » : le bon couvre le prix des nouveaux articles. Ajoutez-les comme pour une vente normale.',
+                'Nouveaux articles plus chers : encaissez seulement la différence. Moins chers : la caisse affiche le reste à rendre en espèces au client.',
+                'Le bon ne sert qu\'une fois. S\'il n\'est pas utilisé tout de suite, retrouvez-le sur la vente d\'origine (« Utiliser le bon en caisse »).',
+                'Annuler la nouvelle vente redonne sa valeur au bon. Au rapport Z, les bons d\'échange ne comptent pas dans l\'argent encaissé : seule la différence est de l\'argent.',
+            ],
+            'lien' => 'ventes.index', 'permission' => 'ventes.voir'],
+
         'carte-cadeau' => ['rubrique' => 'caisse', 'titre' => 'Vendre et encaisser une carte cadeau',
             'mots' => 'carte cadeau bon d achat chèque cadeau offrir anniversaire fête cadeau prépayé code solde',
             'resume' => 'Un client paie une carte cadeau ; la personne qui la reçoit la dépense plus tard avec son code.',

@@ -125,7 +125,7 @@ class RapportController extends Controller
 
     private function paiements($du, $au): array
     {
-        $modes = config('gestion.modes_paiement') + ['fidelite' => 'Points de fidélité', 'avoir' => 'Avoir client', 'acompte' => 'Acompte déjà versé', 'carte_cadeau' => 'Carte cadeau'];
+        $modes = config('gestion.modes_paiement') + ['fidelite' => 'Points de fidélité', 'avoir' => 'Avoir client', 'acompte' => 'Acompte déjà versé', 'carte_cadeau' => 'Carte cadeau', 'echange' => 'Bon d\'échange'];
         $lignes = Paiement::with(['vente', 'client'])->whereBetween('date_paiement', [$du, $au])
             ->whereHas('vente', fn ($q) => $q->where('statut', 'validee'))->orderBy('date_paiement')->get()
             ->map(fn ($p) => ['date' => $p->date_paiement->format('d/m/Y H:i'), 'vente' => $p->vente?->numero, 'client' => $p->client?->nomComplet() ?? 'Comptoir',
@@ -310,7 +310,7 @@ class RapportController extends Controller
         foreach (Paiement::with('vente:id,numero,statut')->whereBetween('date_paiement', [$du, $au])->whereHas('vente', fn ($q) => $q->where('statut', 'validee'))->orderBy('date_paiement')->get() as $p) {
             $d = $p->date_paiement->format('d/m/Y');
             $piece = $p->vente?->numero ?? '';
-            $compte = match ($p->mode) { 'fidelite' => $c['remises_accordees'], 'avoir' => $c['avoirs_clients'] ?? '4191', 'acompte' => $c['acomptes_clients'] ?? '4191', 'carte_cadeau' => $c['cartes_cadeaux'] ?? '4191', default => $tresorerie($p->mode) };
+            $compte = match ($p->mode) { 'fidelite' => $c['remises_accordees'], 'avoir' => $c['avoirs_clients'] ?? '4191', 'acompte' => $c['acomptes_clients'] ?? '4191', 'carte_cadeau' => $c['cartes_cadeaux'] ?? '4191', 'echange' => $c['avoirs_clients'] ?? '4191', default => $tresorerie($p->mode) };
             $libelle = ($p->montant < 0 ? 'Remboursement ' : 'Encaissement ').$piece.' ('.libelle_mode($p->mode).')';
             $m = abs((int) $p->montant);
             $p->montant >= 0

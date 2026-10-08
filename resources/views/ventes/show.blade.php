@@ -71,7 +71,11 @@
                             <tr><td class="fw-semibold">{{ $r->numero }}<div class="small text-doux">{{ $r->created_at->format('d/m/Y H:i') }} · {{ $r->auteur?->nomComplet() }}</div></td>
                                 <td class="small">{{ $r->lignes->map(fn ($l) => qte($l->quantite).' × '.$l->designation)->implode(', ') }}<div class="text-doux">{{ $r->motif }}</div></td>
                                 <td class="text-end montant">− {{ gnf($r->montant) }}
-                                    @if ($r->rembourse)<div class="small text-doux">{{ $r->mode_remboursement === 'avoir' ? 'rendu en avoir' : 'remboursé' }} {{ gnf($r->rembourse) }}{{ $r->mode_remboursement === 'avoir' ? '' : ' ('.libelle_mode($r->mode_remboursement).')' }}
+                                    @if ($r->mode_remboursement === \App\Services\Echanges::MODE)
+                                        <div class="small text-doux">échangé : bon de {{ gnf($r->rembourse) }}
+                                            @if ($r->echange_restant > 0)<a href="{{ route('ventes.create', ['echange' => $r->id]) }}" class="d-block"><i class="bi bi-arrow-left-right"></i> Utiliser le bon en caisse</a>
+                                            @elseif ($r->echange_vente_id)<a href="{{ route('ventes.show', $r->echange_vente_id) }}" class="d-block">utilisé sur la vente {{ $r->venteEchange?->numero }}</a>@endif</div>
+                                    @elseif ($r->rembourse)<div class="small text-doux">{{ $r->mode_remboursement === 'avoir' ? 'rendu en avoir' : 'remboursé' }} {{ gnf($r->rembourse) }}{{ $r->mode_remboursement === 'avoir' ? '' : ' ('.libelle_mode($r->mode_remboursement).')' }}
                                         @if ($r->mode_remboursement === 'avoir')<a href="{{ route('retours.bon-avoir', $r) }}?imprimer=1" target="_blank" class="d-block"><i class="bi bi-printer"></i> Bon d'avoir</a>@endif</div>
                                     @else<div class="small text-doux">déduit du reste à payer</div>@endif</td></tr>
                         @endforeach
@@ -122,6 +126,7 @@
                                     </select></div>
                                 <div class="col-sm-5"><label class="form-label small mb-1" for="mode_remboursement">Remboursement éventuel</label>
                                     <select name="mode_remboursement" id="mode_remboursement" class="form-select form-select-sm">
+                                        <option value="echange" @selected(old('mode_remboursement') === 'echange')>Échange : le client prend d'autres articles (on passe en caisse)</option>
                                         @if ($vente->client_id)<option value="avoir" @selected(old('mode_remboursement') === 'avoir')>Avoir client (bon d'achat, rien ne sort de la caisse)</option>@endif
                                         @foreach (config('gestion.modes_paiement') as $k => $lib)<option value="{{ $k }}" @selected(old('mode_remboursement', 'especes') === $k)>{{ $lib }}</option>@endforeach
                                     </select></div>

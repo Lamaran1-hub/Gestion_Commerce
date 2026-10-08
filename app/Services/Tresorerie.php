@@ -52,7 +52,7 @@ class Tresorerie
         if ($compte !== 'autre') {
             return $requete->whereIn($colonne, $this->modes($compte));
         }
-        $connus = collect(self::comptes())->except('autre')->flatMap(fn ($c) => $c[2])->push(Fidelite::MODE)->push(Avoirs::MODE)->push(PaiementFournisseur::MODE_AVOIR)->push(Acomptes::MODE)->push(CartesCadeaux::MODE)->all();
+        $connus = collect(self::comptes())->except('autre')->flatMap(fn ($c) => $c[2])->push(Fidelite::MODE)->push(Avoirs::MODE)->push(PaiementFournisseur::MODE_AVOIR)->push(Acomptes::MODE)->push(CartesCadeaux::MODE)->push(Echanges::MODE)->all();
 
         return $requete->where(fn ($q) => $q->whereNotIn($colonne, $connus)->orWhereNull($colonne));
     }

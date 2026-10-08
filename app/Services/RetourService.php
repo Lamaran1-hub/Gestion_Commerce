@@ -109,15 +109,18 @@ class RetourService
                 }
                 $versAvoir = $aRendre - $pointsRendus - $versCarte;
             }
-            $rembourse = $aRendre - $pointsRendus - $versCarte - $versAvoir;   // argent réellement rendu
+            // Échange : ce qui revient au client devient un bon d'échange, utilisé aussitôt en caisse (client avec ou sans fiche)
+            $versBon = $modeRemboursement === Echanges::MODE ? $aRendre - $pointsRendus - $versCarte - $versAvoir : 0;
+            $rembourse = $aRendre - $pointsRendus - $versCarte - $versAvoir - $versBon;   // argent réellement rendu
             if ($rembourse > 0) {
                 $this->caisse->verifierOuverte($auteur); // on rend de l'argent : la caisse doit être ouverte
             }
 
             $retour = Retour::create([
                 'numero' => $this->numeros->suivant('retour', 'RET'),
-                'vente_id' => $v->id, 'montant' => $montant, 'rembourse' => $rembourse + $versAvoir + $versCarte,
-                'mode_remboursement' => $rembourse > 0 ? $modeRemboursement : ($versAvoir > 0 ? Avoirs::MODE : ($versCarte > 0 ? CartesCadeaux::MODE : null)),
+                'vente_id' => $v->id, 'montant' => $montant, 'rembourse' => $rembourse + $versAvoir + $versCarte + $versBon,
+                'mode_remboursement' => $rembourse > 0 || $versBon > 0 ? $modeRemboursement : ($versAvoir > 0 ? Avoirs::MODE : ($versCarte > 0 ? CartesCadeaux::MODE : null)),
+                'echange_restant' => $versBon,
                 'motif' => $motif, 'user_id' => $auteur->id,
             ]);
             app(Registre::class)->inscrire($v->boutique_id, 'retour', $retour->id, Registre::donneesRetour($retour));
@@ -165,6 +168,13 @@ class RetourService
                 ]);
                 app(CartesCadeaux::class)->rendreSurVente($v, $versCarte, "Retour {$retour->numero} ({$v->numero})");
             }
+            if ($versBon > 0) {
+                Paiement::create([
+                    'vente_id' => $v->id, 'client_id' => $v->client_id, 'montant' => -$versBon,
+                    'mode' => Echanges::MODE, 'reference' => "Bon d'échange {$retour->numero}",
+                    'date_paiement' => now(), 'user_id' => $auteur->id,
+                ]);
+            }
             if ($rembourse > 0) {
                 Paiement::create([
                     'vente_id' => $v->id, 'client_id' => $v->client_id, 'montant' => -$rembourse,
@@ -178,7 +188,7 @@ class RetourService
                 'total_tva' => $v->total_tva - $tvaRetour,
                 'total_ttc' => $nouveauTotal,
                 'montant_retourne' => $v->montant_retourne + $montant,
-                'montant_paye' => $v->montant_paye - $rembourse - $pointsRendus - $versAvoir - $versCarte,
+                'montant_paye' => $v->montant_paye - $rembourse - $pointsRendus - $versAvoir - $versCarte - $versBon,
             ]);
 
             if ($seriesRendues->isNotEmpty()) {
@@ -186,8 +196,8 @@ class RetourService
             }
 
             JournalActivite::noter('retour', "Retour {$retour->numero} sur {$v->numero} : ".gnf($montant)
-                .($rembourse ? ', remboursé '.gnf($rembourse) : '').($versAvoir ? ', avoir de '.gnf($versAvoir) : '').($versCarte ? ', '.gnf($versCarte).' recrédités sur la carte cadeau' : '')
-                .(! $rembourse && ! $versAvoir && ! $versCarte ? ', déduit du crédit' : '')." ({$motif})");
+                .($rembourse ? ', remboursé '.gnf($rembourse) : '').($versAvoir ? ', avoir de '.gnf($versAvoir) : '').($versCarte ? ', '.gnf($versCarte).' recrédités sur la carte cadeau' : '').($versBon ? ', bon d\'échange de '.gnf($versBon) : '')
+                .(! $rembourse && ! $versAvoir && ! $versCarte && ! $versBon ? ', déduit du crédit' : '')." ({$motif})");
 
             return $retour;
         });
