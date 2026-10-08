@@ -10,7 +10,7 @@
         $catalogue = $produits->map(fn ($p) => ['id' => $p->id, 'nom' => $p->designation, 'code' => $p->code_barre, 'prix' => $p->prix_vente, 'gros' => $p->prix_gros, 'qteGros' => $p->quantite_gros ? (float) $p->quantite_gros : null, 'stock' => (float) $p->stock, 'unite' => $p->unite,
             'cond' => $p->aConditionnement() ? $p->conditionnement : null, 'qteCond' => $p->aConditionnement() ? (float) $p->qte_conditionnement : null,
             'prixCond' => $p->aConditionnement() ? $p->prixConditionnement() : null, 'tva' => \App\Support\Tva::tauxProduit($p),
-            'promo' => $promos->prix($p), 'promoCond' => $p->aConditionnement() ? $promos->prix($p, true) : null]);
+            'promo' => $promos->prix($p), 'promoCond' => $p->aConditionnement() ? $promos->prix($p, true) : null, 'img' => $p->imageUrl()]);
     @endphp
     @if ($proforma)
         <div class="alert alert-info d-flex align-items-center gap-2"><i class="bi bi-file-earmark-text fs-5"></i>
@@ -328,7 +328,7 @@
                     if (!catalogue.some(c => c.id === p.id)) catalogue.push({ id: p.id, nom: p.designation, code: p.code_barre, prix: p.prix_vente, gros: p.prix_gros, qteGros: p.quantite_gros ? Number(p.quantite_gros) : null, stock: Number(p.stock), unite: p.unite,
                         cond: p.conditionnement && Number(p.qte_conditionnement) > 1 ? p.conditionnement : null, qteCond: Number(p.qte_conditionnement) || null,
                         prixCond: p.prix_conditionnement ? Number(p.prix_conditionnement) : Math.round(p.prix_vente * Number(p.qte_conditionnement || 0)),
-                        promo: p.promo, promoCond: p.promo_cond, tva: Number(p.tva || 0) });
+                        promo: p.promo, promoCond: p.promo_cond, tva: Number(p.tva || 0), img: p.image || null });
                 });
                 tuiles(filtrer(e.target.value));
             }, 300);
@@ -409,6 +409,8 @@
         const l = panier.get(Number(b.dataset.id));
         if (b.dataset.action === 'plus') l.quantite = Math.min(l.quantite + 1, maxLigne(l));
         if (b.dataset.action === 'moins') l.quantite = Math.max(l.quantite - 1, 0);
+        // 12 bouteilles comptées une par une = 1 paquet : on passe au prix du paquet
+        if (b.dataset.action === 'en-cond') { l.quantite = Math.round(l.quantite / l.produit.qteCond * 100) / 100; l.cond = true; }
         if (b.dataset.action === 'retirer' || l.quantite <= 0) panier.delete(l.produit.id);
         rendre();
     });
@@ -441,6 +443,19 @@
     const prixPromo = (l) => l.cond ? l.produit.promoCond : l.produit.promo;
     const enPromo = (l) => !!prixPromo(l) && prixPromo(l) < prixNormal(l);
     const prixUnit = (l) => enPromo(l) ? prixPromo(l) : prixNormal(l);
+    // Vendu à l'unité alors que la quantité fait un paquet complet : proposer le prix du paquet (moins cher pour le client)
+    function conseilCond(l) {
+        const n = l.produit.qteCond;
+        if (l.cond || !l.produit.cond || !n || l.quantite < n) return '';
+        const paquets = l.quantite / n, prixPaquet = prixUnit({ ...l, cond: true, quantite: paquets });
+        const economie = Math.round(prixUnit(l) * l.quantite - prixPaquet * paquets);
+        if (economie <= 0) return '';
+        const nom = echapper(l.produit.cond);
+        return Math.abs(paquets - Math.round(paquets)) < 0.001
+            ? `<div style="grid-column:1/-1"><button type="button" class="btn btn-sm btn-outline-success py-0" data-action="en-cond" data-id="${l.produit.id}">
+                <i class="bi bi-box2 me-1"></i>${formatQte(l.quantite)} × ${echapper(l.produit.unite)} → ${formatQte(paquets)} ${nom} de ${formatQte(n)} : prix du ${nom} (− ${gnf(economie)})</button></div>`
+            : `<div class="small text-success" style="grid-column:1/-1"><i class="bi bi-lightbulb me-1"></i>1 ${nom} de ${formatQte(n)} = ${gnf(prixUnit({ ...l, cond: true, quantite: 1 }))} : par multiple de ${formatQte(n)}, le ${nom} revient moins cher.</div>`;
+    }
 
     function totaux() {
         const sousTotal = [...panier.values()].reduce((s, l) => s + Math.round(prixUnit(l) * l.quantite), 0);
@@ -466,7 +481,7 @@
         dernierTicket = {
             client: $('client_id').value ? opt.text.split('—')[0].trim() : '',
             lignes: lignes.map(l => ({ cle: l.produit.id + (l.cond ? 'c' : ''), nom: l.produit.nom + (l.cond ? ' (' + l.produit.cond + ')' : ''),
-                quantite: formatQte(l.quantite), prix: prixUnit(l), total: Math.round(prixUnit(l) * l.quantite), promo: enPromo(l) })),
+                quantite: formatQte(l.quantite), prix: prixUnit(l), total: Math.round(prixUnit(l) * l.quantite), promo: enPromo(l), img: l.produit.img || null })),
             sousTotal: t.sousTotal, remise: t.remise, tva: t.tva, total: t.total, deduit, resteAPayer: du,
             recu: $('mode').value === 'especes' && $('montant_recu').value.trim() !== '' ? recu : 0,
             monnaie: $('mode').value === 'especes' && $('montant_recu').value.trim() !== '' ? Math.max(0, recu - du) : 0,
@@ -479,6 +494,8 @@
     function rendre() {
         const lignes = [...panier.values()];
         $('ticketVide').classList.toggle('d-none', lignes.length > 0);
+        // Quitter d'abord le champ quantité en cours de saisie : sa validation (blur) ne doit pas survenir pendant qu'on le retire
+        if ($('lignes').contains(document.activeElement)) document.activeElement.blur();
         $('lignes').querySelectorAll('.ligne-ticket').forEach(n => n.remove());
         $('lignes').insertAdjacentHTML('beforeend', lignes.map(l => `
             <div class="ligne-ticket">
@@ -497,6 +514,7 @@
                 ${enPromo(l) ? '<span class="etat etat-rupture">promo</span>' : ''}
                 ${estGros(l) && !enPromo(l) ? '<span class="etat etat-ok">prix de gros</span>' : (!l.cond && l.produit.gros && l.produit.qteGros ? `<small class="text-doux">gros dès ${formatQte(l.produit.qteGros)}</small>` : '')}
               </div>
+              ${conseilCond(l)}
               <div class="text-end"><button type="button" class="btn btn-sm btn-link text-danger p-0" data-action="retirer" data-id="${l.produit.id}">Retirer</button></div>
             </div>`).join(''));
 

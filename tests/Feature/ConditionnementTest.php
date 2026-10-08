@@ -88,6 +88,23 @@ class ConditionnementTest extends TestCase
         $this->assertSame(456_000, $this->dans($b, fn () => Approvisionnement::first()->total));
     }
 
+    public function test_paquet_de_12_bouteilles_et_bouteille_au_detail(): void
+    {
+        // Cas réel : bouteille vendue seule 7 000, paquet de 12 vendu 25 000 (achat 1 800 la bouteille)
+        [$b, $admin] = $this->creerBoutique();
+        $p = $this->produit($b, ['designation' => 'Boisson 33 cl', 'unite' => 'bouteille', 'prix_achat' => 1_800, 'prix_vente' => 7_000,
+            'conditionnement' => 'paquet', 'qte_conditionnement' => 12, 'prix_conditionnement' => 25_000], 48);
+
+        $v = $this->dans($b, fn () => app(VenteService::class)->creer(['lignes' => [['produit_id' => $p->id, 'quantite' => 1, 'conditionnement' => 1]], 'mode' => 'especes']), $admin);
+        $this->assertSame(25_000, $v->total_ttc);
+        $v2 = $this->dans($b, fn () => app(VenteService::class)->creer(['lignes' => [['produit_id' => $p->id, 'quantite' => 1]], 'mode' => 'especes']), $admin);
+        $this->assertSame(7_000, $v2->total_ttc);
+        $this->assertEquals(48 - 12 - 1, $p->fresh()->stock, 'stock compté en bouteilles : un paquet ouvert se vend bouteille par bouteille');
+
+        // La caisse propose le prix du paquet quand on compte 12 bouteilles une par une
+        $this->actingAs($admin)->get('/caisse')->assertSee('data-action="en-cond"', false);
+    }
+
     public function test_regles_du_conditionnement_sur_la_fiche_produit(): void
     {
         [$b, $admin] = $this->creerBoutique();

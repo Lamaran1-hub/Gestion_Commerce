@@ -97,8 +97,8 @@ class VenteController extends Controller
         $promos = app(\App\Services\Promotions::class);
 
         return Produit::where('actif', true)->recherche($request->q)->orderBy('designation')->limit(30)
-            ->get(['id', 'categorie_id', 'designation', 'code_barre', 'prix_achat', 'prix_vente', 'taux_tva', 'prix_gros', 'quantite_gros', 'conditionnement', 'qte_conditionnement', 'prix_conditionnement', 'stock', 'unite'])
-            ->map(fn (Produit $p) => collect($p->only(['id', 'designation', 'code_barre', 'prix_vente', 'prix_gros', 'quantite_gros', 'conditionnement', 'qte_conditionnement', 'prix_conditionnement', 'stock', 'unite']))
+            ->get(['id', 'categorie_id', 'designation', 'code_barre', 'prix_achat', 'prix_vente', 'taux_tva', 'prix_gros', 'quantite_gros', 'conditionnement', 'qte_conditionnement', 'prix_conditionnement', 'stock', 'unite', 'image'])
+            ->map(fn (Produit $p) => collect($p->only(['id', 'designation', 'code_barre', 'prix_vente', 'prix_gros', 'quantite_gros', 'conditionnement', 'qte_conditionnement', 'prix_conditionnement', 'stock', 'unite']))->put('image', $p->imageUrl())
                 ->put('promo', $promos->prix($p))->put('tva', \App\Support\Tva::tauxProduit($p))->put('promo_cond', $p->aConditionnement() ? $promos->prix($p, true) : null));
     }
 
@@ -158,7 +158,7 @@ class VenteController extends Controller
         $promos = fonction('promotions')
             ? \App\Models\Promotion::enCours()->with('produit')->latest('id')->take(6)->get()
                 ->filter(fn ($p) => $p->produit)->map(fn ($p) => ['nom' => $p->produit->designation, 'prix' => \App\Support\Tva::prixClient($p->produit->prix_vente, $p->produit),
-                    'promo' => \App\Support\Tva::prixClient($promotions->prix($p->produit), $p->produit)])
+                    'promo' => \App\Support\Tva::prixClient($promotions->prix($p->produit), $p->produit), 'img' => $p->produit->imageUrl()])
                 ->filter(fn ($p) => $p['promo'] && $p['promo'] < $p['prix'])->values()
             : collect();
 

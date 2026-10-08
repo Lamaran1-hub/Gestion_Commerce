@@ -12,7 +12,19 @@
         .ecran-haut img, .ecran-haut .barre-initiales { width: 3rem; height: 3rem; border-radius: .6rem; background: #fff; object-fit: contain; padding: 2px; flex: none; }
         .ecran-corps { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 1rem 1.2rem; }
         .lignes { flex: 1; min-height: 0; overflow-y: auto; }
-        .ligne { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid var(--ligne); }
+        .ligne { display: flex; align-items: center; gap: .9rem; padding: .55rem 0; border-bottom: 1px solid var(--ligne); }
+        .ligne .vignette { width: 3.4em; height: 3.4em; flex: none; border-radius: .6rem; background: #fff; border: 1px solid var(--ligne); object-fit: contain;
+            display: flex; align-items: center; justify-content: center; color: var(--doux); font-size: 1em; overflow: hidden; }
+        .ligne .vignette i { font-size: 1.4em; }
+        /* Grand écran posé à l'horizontale : la photo du dernier article ajouté, en grand */
+        .ticket-grille { flex: 1; min-height: 0; display: flex; gap: 1.2rem; }
+        .vedette { display: none; }
+        @media (orientation: landscape) and (min-width: 900px) {
+            .vedette { display: flex; flex-direction: column; width: 34%; max-width: 26rem; background: #fff; border: 1px solid var(--ligne); border-radius: 1rem; padding: 1rem; text-align: center; }
+            .vedette .photo { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+            .vedette img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: .6rem; }
+            .vedette .photo i { font-size: 6em; color: var(--ligne); }
+        }
         .ligne .detail { color: var(--doux); font-size: .85em; }
         .ligne.nouvelle { animation: surligner 1.2s ease-out; }
         @keyframes surligner { from { background: rgba(31, 111, 84, .18); } to { background: transparent; } }
@@ -43,7 +55,7 @@
                     <div class="fw-semibold mb-2"><i class="bi bi-percent me-1"></i>En promotion en ce moment</div>
                     <div class="row g-2 justify-content-center">
                         @foreach ($promos as $p)
-                            <div class="col-6 col-lg-4"><div class="promo h-100"><div class="fw-semibold">{{ $p['nom'] }}</div>
+                            <div class="col-6 col-lg-4"><div class="promo h-100">@if ($p['img'])<img src="{{ $p['img'] }}" alt="" class="d-block mx-auto mb-1 rounded" style="height:4.5em;max-width:100%;object-fit:contain">@endif<div class="fw-semibold">{{ $p['nom'] }}</div>
                                 <s class="text-doux small">{{ gnf($p['prix']) }}</s> <span class="text-danger fw-bold">{{ gnf($p['promo']) }}</span></div></div>
                         @endforeach
                     </div>
@@ -59,7 +71,15 @@
             <div class="d-flex justify-content-between align-items-baseline mb-1">
                 <div class="fw-bold fs-5">Votre ticket</div><div class="text-doux" id="client"></div>
             </div>
-            <div class="lignes" id="lignes"></div>
+            <div class="ticket-grille">
+                <aside class="vedette" id="vedette" aria-label="Dernier article ajouté">
+                    <div class="small text-doux">Dernier article ajouté</div>
+                    <div class="photo" id="vedettePhoto"></div>
+                    <div class="fw-bold mt-2" id="vedetteNom"></div>
+                    <div class="text-doux" id="vedettePrix"></div>
+                </aside>
+                <div class="lignes flex-grow-1" id="lignes"></div>
+            </div>
             <div class="pied">
                 <div class="d-flex justify-content-between text-doux" id="ligneSousTotal"><span>Sous-total</span><span id="sousTotal"></span></div>
                 <div class="d-flex justify-content-between text-danger d-none" id="ligneRemise"><span>Remise</span><span id="remise"></span></div>
@@ -100,6 +120,8 @@
         $('etatMerci').classList.toggle('d-none', etat !== 'merci');
     };
     const ligne = (id, visible) => $(id).classList.toggle('d-none', !visible);
+    // Photo du produit (ou pictogramme s'il n'en a pas) : le client reconnaît ce qu'il achète
+    const vignette = (l) => l.img ? `<img class="vignette" src="${echapper(l.img)}" alt="" loading="lazy">` : '<span class="vignette" aria-hidden="true"><i class="bi bi-box-seam"></i></span>';
 
     function afficherTicket(t) {
         if (!t.lignes.length) {
@@ -111,10 +133,16 @@
         montrer('ticket');
         $('client').textContent = t.client || '';
         $('lignes').innerHTML = t.lignes.map(l => `<div class="ligne ${idsAvant.has(l.cle) ? '' : 'nouvelle'}">
-            <div><div class="fw-semibold">${echapper(l.nom)}</div><div class="detail">${echapper(l.quantite)} × ${gnf(l.prix)}${l.promo ? ' <span class="text-danger">promo</span>' : ''}</div></div>
+            ${vignette(l)}
+            <div class="flex-grow-1 min-w-0"><div class="fw-semibold">${echapper(l.nom)}</div><div class="detail">${echapper(l.quantite)} × ${gnf(l.prix)}${l.promo ? ' <span class="text-danger">promo</span>' : ''}</div></div>
             <div class="fw-semibold text-nowrap montant">${gnf(l.total)}</div></div>`).join('');
         const nouvelle = $('lignes').querySelector('.nouvelle');
         (nouvelle || $('lignes').lastElementChild)?.scrollIntoView({ block: 'nearest' });
+        // Photo en grand : le dernier article ajouté (ou modifié), sinon le dernier du ticket
+        const vedette = t.lignes.find(l => !idsAvant.has(l.cle)) || t.lignes[t.lignes.length - 1];
+        $('vedettePhoto').innerHTML = vedette.img ? `<img src="${echapper(vedette.img)}" alt="${echapper(vedette.nom)}">` : '<i class="bi bi-box-seam" aria-hidden="true"></i>';
+        $('vedetteNom').textContent = vedette.nom;
+        $('vedettePrix').textContent = vedette.quantite + ' × ' + gnf(vedette.prix);
         idsAvant = new Set(t.lignes.map(l => l.cle));
         $('sousTotal').textContent = gnf(t.sousTotal);
         $('remise').textContent = '− ' + gnf(t.remise); ligne('ligneRemise', t.remise > 0);
