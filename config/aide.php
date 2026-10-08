@@ -46,6 +46,19 @@ return [
             ],
             'lien' => 'produits.create', 'permission' => 'produits.gerer'],
 
+        'kit' => ['rubrique' => 'demarrer', 'titre' => 'Créer un kit / pack (plusieurs produits vendus ensemble)',
+            'mots' => 'kit pack lot coffret assortiment composé composition rentrée scolaire panier cadeau ensemble',
+            'resume' => 'Un « Pack rentrée » ou un « Kit cuisine » se vend en un clic ; ce sont ses produits qui sortent du stock.',
+            'etapes' => [
+                'Produits → Nouveau produit : donnez le nom et le prix de vente du pack, puis cochez « Kit / pack composé ».',
+                'Ajoutez chaque produit du pack avec sa quantité (ex. : 1 sac, 5 cahiers, 2 stylos). Le prix d\'achat se calcule seul : la somme des coûts.',
+                'Le kit n\'a pas de stock propre : sa fiche affiche combien de kits on peut former avec le stock, et quel produit limite.',
+                'À la caisse, il se vend comme un produit. Chaque vente sort ses produits du stock ; un retour ou une annulation les remet.',
+                'On réceptionne, inventorie et transfère les produits du kit, jamais le kit lui-même. Le kit n\'est pas compté dans la valeur du stock (ses produits le sont déjà).',
+                'Un produit qui entre dans un kit ne peut pas être supprimé ; s\'il est désactivé, le kit n\'est plus disponible.',
+            ],
+            'lien' => 'produits.create', 'permission' => 'produits.gerer'],
+
         'import-excel' => ['rubrique' => 'demarrer', 'titre' => 'Importer tout le catalogue depuis Excel',
             'mots' => 'excel import fichier modèle windev csv catalogue',
             'resume' => 'Téléchargez le modèle, remplissez-le, importez : produits, prix et stock en une fois.',

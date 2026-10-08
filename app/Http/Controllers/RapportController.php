@@ -154,7 +154,7 @@ class RapportController extends Controller
 
     private function stock(): array
     {
-        $lignes = Produit::with('categorie')->orderBy('designation')->get()->map(fn ($p) => [
+        $lignes = Produit::stockables()->with('categorie')->orderBy('designation')->get()->map(fn ($p) => [
             'designation' => $p->designation, 'categorie' => $p->categorie?->nom, 'stock' => $p->stock, 'seuil' => $p->seuil_alerte,
             'etat' => ['rupture' => 'Rupture', 'alerte' => 'À commander', 'ok' => 'OK'][$p->etatStock()],
             'prix_achat' => $p->prix_achat, 'prix_vente' => $p->prix_vente, 'valeur' => $p->valeurStock()])->all();

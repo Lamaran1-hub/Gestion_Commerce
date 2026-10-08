@@ -53,7 +53,7 @@ class DashboardController extends Controller
             'encaisse' => $encaisse,
             'credits' => $credits,
             'nb_clients' => Client::count(),
-            'valeur_stock' => (int) Produit::where('stock', '>', 0)->sum(DB::raw('stock * prix_achat')),
+            'valeur_stock' => (int) Produit::stockables()->where('stock', '>', 0)->sum(DB::raw('stock * prix_achat')),
         ];
 
         $objectifs = app(\App\Services\Objectifs::class);

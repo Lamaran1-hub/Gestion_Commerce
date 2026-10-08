@@ -53,30 +53,63 @@
                         <input type="checkbox" name="en_vitrine" value="1" id="en_vitrine" class="form-check-input" @checked(old('en_vitrine', $produit->en_vitrine ?? true))>
                         <label for="en_vitrine" class="form-check-label">Afficher dans la vitrine en ligne</label></div></div>
                 @endif
-                <div class="col-12"><h3 class="h6 mb-0 mt-2"><i class="bi bi-box2 me-1"></i>Vente par conditionnement <span class="text-doux fw-normal small">(facultatif)</span></h3></div>
-                <div class="col-md-4"><label class="form-label" for="conditionnement">Conditionnement</label>
+                {{-- Kit : pack composé de plusieurs produits ; vendre le kit sort ses composants du stock --}}
+                @php
+                    $estKit = (bool) old('est_kit', $produit->est_kit);
+                    $lignesKit = old('composants', $composition->map(fn ($c) => ['produit_id' => $c->composant_id, 'quantite' => (float) $c->quantite])->all());
+                    $lignesKit = array_values(array_pad($lignesKit, max(count($lignesKit), 2), ['produit_id' => '', 'quantite' => 1]));
+                @endphp
+                <div class="col-12"><div class="form-check form-switch">
+                    <input type="hidden" name="est_kit" value="0">
+                    <input type="checkbox" name="est_kit" value="1" id="est_kit" class="form-check-input @error('est_kit') is-invalid @enderror" @checked($estKit)>
+                    <label for="est_kit" class="form-check-label"><i class="bi bi-boxes me-1"></i><strong>Kit / pack composé</strong> <span class="text-doux small">(ex. : pack rentrée = 1 sac + 5 cahiers + 2 stylos)</span></label>
+                    @error('est_kit')<div class="invalid-feedback">{{ $message }}</div>@enderror</div></div>
+                <div class="col-12 {{ $estKit ? '' : 'd-none' }}" id="blocKit">
+                    <div class="border rounded p-2 bg-light">
+                        <div class="small text-doux mb-2">Le kit n'a pas de stock propre : il est disponible tant que ses produits le sont. Le vendre sort chaque produit du stock ;
+                            son prix d'achat est la somme de leurs coûts.</div>
+                        @error('composants')<div class="text-danger small mb-2">{{ $message }}</div>@enderror
+                        <div id="lignesKit">
+                            @foreach ($lignesKit as $i => $l)
+                                <div class="row g-2 mb-2 ligne-kit">
+                                    <div class="col-8 col-md-9"><select name="composants[{{ $i }}][produit_id]" class="form-select form-select-sm" aria-label="Produit du kit">
+                                        <option value="">Choisir un produit…</option>
+                                        @foreach ($composables as $c)<option value="{{ $c->id }}" data-cout="{{ $c->prix_achat }}" data-stock="{{ (float) $c->stock }}" @selected((int) ($l['produit_id'] ?? 0) === $c->id)>{{ $c->designation }} ({{ qte($c->stock) }} {{ $c->unite }})</option>@endforeach
+                                    </select></div>
+                                    <div class="col-4 col-md-3"><input type="number" step="0.01" min="0.01" name="composants[{{ $i }}][quantite]" value="{{ $l['quantite'] ?? 1 }}" class="form-control form-control-sm" aria-label="Quantité dans le kit"></div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="ajouterComposant"><i class="bi bi-plus-lg me-1"></i>Ajouter un produit</button>
+                            <span class="small fw-semibold" id="resumeKit" aria-live="polite"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 hors-kit {{ $estKit ? 'd-none' : '' }}"><h3 class="h6 mb-0 mt-2"><i class="bi bi-box2 me-1"></i>Vente par conditionnement <span class="text-doux fw-normal small">(facultatif)</span></h3></div>
+                <div class="col-md-4 hors-kit {{ $estKit ? 'd-none' : '' }}"><label class="form-label" for="conditionnement">Conditionnement</label>
                     <input name="conditionnement" id="conditionnement" list="conditionnements" value="{{ old('conditionnement', $produit->conditionnement) }}" class="form-control" placeholder="Ex. : carton">
                     <datalist id="conditionnements">@foreach (['carton', 'casier', 'sac', 'paquet', 'boîte', 'fardeau', 'palette', 'douzaine'] as $c)<option value="{{ $c }}">@endforeach</datalist></div>
-                <div class="col-md-4"><label class="form-label" for="qte_conditionnement">Nombre d'unités dedans</label>
+                <div class="col-md-4 hors-kit {{ $estKit ? 'd-none' : '' }}"><label class="form-label" for="qte_conditionnement">Nombre d'unités dedans</label>
                     <input type="number" step="0.01" min="2" name="qte_conditionnement" id="qte_conditionnement" value="{{ old('qte_conditionnement', $produit->qte_conditionnement ? (float) $produit->qte_conditionnement : '') }}" class="form-control" placeholder="Ex. : 12"></div>
-                <div class="col-md-4"><label class="form-label" for="prix_conditionnement">Prix du conditionnement (GNF)</label>
+                <div class="col-md-4 hors-kit {{ $estKit ? 'd-none' : '' }}"><label class="form-label" for="prix_conditionnement">Prix du conditionnement (GNF)</label>
                     <input name="prix_conditionnement" id="prix_conditionnement" data-montant inputmode="numeric" value="{{ old('prix_conditionnement', $produit->prix_conditionnement) }}" class="form-control text-end" placeholder="= unités × prix de détail">
                     <div class="form-text">Le stock reste compté à l'unité ; à la caisse, on choisit « à l'unité » ou « au carton ».</div></div>
-                <div class="col-md-4"><label class="form-label" for="seuil_alerte">Seuil d'alerte</label>
+                <div class="col-md-4 hors-kit {{ $estKit ? 'd-none' : '' }}"><label class="form-label" for="seuil_alerte">Seuil d'alerte</label>
                     <input type="number" step="0.01" min="0" name="seuil_alerte" id="seuil_alerte" value="{{ old('seuil_alerte', (float) ($produit->seuil_alerte ?? 0)) }}" class="form-control">
                     <div class="form-text">Alerte quand le stock descend à ce niveau.</div></div>
                 <div class="col-md-4"><label class="form-label" for="garantie_mois">Garantie (mois)</label>
                     <input type="number" min="1" max="120" name="garantie_mois" id="garantie_mois" value="{{ old('garantie_mois', $produit->garantie_mois) }}" class="form-control" placeholder="Aucune">
                     <div class="form-text">Imprimée sur le reçu et la facture, avec la date de fin.</div></div>
-                <div class="col-md-8 d-flex align-items-center"><div class="form-check form-switch">
+                <div class="col-md-8 d-flex align-items-center hors-kit {{ $estKit ? 'd-none' : '' }}"><div class="form-check form-switch">
                     <input type="hidden" name="suivi_serie" value="0">
                     <input type="checkbox" name="suivi_serie" value="1" id="suivi_serie" class="form-check-input" @checked(old('suivi_serie', $produit->suivi_serie))>
                     <label for="suivi_serie" class="form-check-label">Noter le numéro de série de chaque article vendu (IMEI, n° de fabrication)</label></div></div>
                 @unless ($produit->exists)
-                    <div class="col-md-4"><label class="form-label" for="stock_initial">Stock initial</label>
+                    <div class="col-md-4 hors-kit {{ $estKit ? 'd-none' : '' }}"><label class="form-label" for="stock_initial">Stock initial</label>
                         <input type="number" step="0.01" min="0" name="stock_initial" id="stock_initial" value="{{ old('stock_initial', 0) }}" class="form-control"></div>
                 @else
-                    <div class="col-md-8 d-flex align-items-end"><p class="text-doux small mb-2">Stock actuel : <strong>{{ qte($produit->stock) }} {{ $produit->unite }}</strong>.
+                    <div class="col-md-8 d-flex align-items-end hors-kit {{ $estKit ? 'd-none' : '' }}"><p class="text-doux small mb-2">Stock actuel : <strong>{{ qte($produit->stock) }} {{ $produit->unite }}</strong>.
                         Pour le modifier, passez par un approvisionnement ou un inventaire (l'historique reste ainsi traçable).</p></div>
                 @endunless
                 <div class="col-12"><div class="form-check form-switch">
@@ -114,6 +147,38 @@
     const calc = () => { const a = nombre(pa.value), v = nombre(pv.value);
         m.textContent = v ? `Marge : ${gnf(v - a)}${a ? ' (' + Math.round((v - a) / a * 100) + ' %)' : ''}` : ''; m.className = 'form-text ' + (v < a ? 'text-danger' : ''); };
     [pa, pv].forEach(i => i.addEventListener('input', calc)); calc();
+
+    // Kit : composition, coût calculé (prix d'achat verrouillé) et nombre de kits formables avec le stock
+    const estKit = document.getElementById('est_kit'), lignesKit = document.getElementById('lignesKit');
+    function majKit() {
+        const kit = estKit.checked;
+        document.getElementById('blocKit').classList.toggle('d-none', !kit);
+        document.querySelectorAll('.hors-kit').forEach(e => e.classList.toggle('d-none', kit));
+        pa.readOnly = kit;
+        if (!kit) { document.getElementById('resumeKit').textContent = ''; calc(); return; }
+        let cout = 0, possibles = Infinity, n = 0;
+        lignesKit.querySelectorAll('.ligne-kit').forEach(l => {
+            const opt = l.querySelector('select').selectedOptions[0], q = parseFloat(String(l.querySelector('input').value).replace(',', '.')) || 0;
+            if (!opt || !opt.value || q <= 0) return;
+            n++; cout += Number(opt.dataset.cout) * q; possibles = Math.min(possibles, Math.floor(Number(opt.dataset.stock) / q));
+        });
+        if (n) pa.value = Math.round(cout).toLocaleString('fr-FR').replace(/ | /g, ' ');
+        document.getElementById('resumeKit').textContent = n ? `${n} produit(s) · coût ${gnf(Math.round(cout))} · ${Math.max(0, possibles)} kit(s) formable(s) avec le stock actuel` : 'Choisissez les produits du kit';
+        calc();
+    }
+    estKit.addEventListener('change', majKit);
+    lignesKit.addEventListener('input', majKit);
+    lignesKit.addEventListener('change', majKit);
+    document.getElementById('ajouterComposant').addEventListener('click', () => {
+        const lignes = lignesKit.querySelectorAll('.ligne-kit');
+        if (lignes.length >= {{ \App\Services\Kits::MAX_COMPOSANTS }}) return;
+        const copie = lignes[lignes.length - 1].cloneNode(true), i = lignes.length;
+        copie.querySelector('select').name = `composants[${i}][produit_id]`; copie.querySelector('select').value = '';
+        copie.querySelector('input').name = `composants[${i}][quantite]`; copie.querySelector('input').value = 1;
+        lignesKit.appendChild(copie);
+        copie.querySelector('select').focus();
+    });
+    majKit();
     // Prix payé par le client (TTC) selon le régime de TVA du produit
     const ttc = document.getElementById('prixTtc');
     if (ttc) {

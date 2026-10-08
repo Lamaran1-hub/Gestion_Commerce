@@ -28,7 +28,7 @@ class StockController extends Controller
     public function inventaire(Request $request)
     {
         return view('stock.inventaire', [
-            'produits' => Produit::where('actif', true)->recherche($request->q)
+            'produits' => Produit::stockables()->where('actif', true)->recherche($request->q)
                 ->when($request->categorie_id, fn ($q) => $q->where('categorie_id', $request->categorie_id))
                 ->orderBy('designation')->paginate(50)->withQueryString(),
             'categories' => Categorie::orderBy('nom')->get(),
@@ -49,7 +49,7 @@ class StockController extends Controller
         $nb = DB::transaction(function () use ($request, $stock, $motif) {
             $nb = 0;
             $comptes = collect($request->comptes)->filter(fn ($v) => $v !== null && $v !== '');
-            foreach (Produit::whereIn('id', $comptes->keys())->get() as $produit) {
+            foreach (Produit::stockables()->whereIn('id', $comptes->keys())->get() as $produit) {
                 if ($stock->ajuster($produit, (float) $comptes[$produit->id], $motif)) {
                     $nb++;
                 }

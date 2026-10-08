@@ -23,7 +23,7 @@ class ProduitController extends Controller
         return view('produits.index', [
             'produits' => $produits,
             'categories' => Categorie::orderBy('nom')->get(),
-            'valeurStock' => (int) Produit::where('stock', '>', 0)->sum(DB::raw('stock * prix_achat')),
+            'valeurStock' => (int) Produit::stockables()->where('stock', '>', 0)->sum(DB::raw('stock * prix_achat')),
             'nbAlertes' => Produit::where('actif', true)->enAlerte()->count(),
         ]);
     }
@@ -67,8 +67,13 @@ class ProduitController extends Controller
         $d['image'] = $request->file('image')?->store('boutiques/'.boutique()->id.'/produits', 'public');
 
         $produit = DB::transaction(function () use ($d, $stock) {
+            $composants = $d['composants'] ?? null;
+            unset($d['composants']);
             $produit = Produit::create($d);
-            if (($d['stock_initial'] ?? 0) > 0) {
+            if ($produit->est_kit) {
+                app(\App\Services\Kits::class)->composer($produit, $composants);
+                \App\Services\Kits::noter($produit);
+            } elseif (($d['stock_initial'] ?? 0) > 0) {
                 $stock->mouvement($produit, 'stock_initial', (float) $d['stock_initial'], null, 'Stock initial');
             }
 
@@ -83,7 +88,8 @@ class ProduitController extends Controller
     public function show(Produit $produit)
     {
         return view('produits.show', [
-            'produit' => $produit->load(['categorie', 'fournisseur']),
+            'produit' => $produit->load(['categorie', 'fournisseur', 'composants.composant']),
+            'dansKits' => app(\App\Services\Kits::class)->kitsContenant($produit),
             'mouvements' => $produit->mouvements()->with('auteur')->latest('id')->paginate(20),
             // Changements de prix ; le prix d'achat seulement pour ceux qui ont le droit de le voir
             'historiquePrix' => $produit->historiquePrix()->with('auteur')
@@ -108,15 +114,32 @@ class ProduitController extends Controller
         } else {
             unset($d['image']);
         }
-        $produit->update($d);
+        $composants = $d['composants'] ?? null;
+        unset($d['composants']);
+        DB::transaction(function () use ($produit, $d, $composants) {
+            $etaitKit = $produit->est_kit;
+            $produit->update($d);
+            if ($produit->est_kit) {
+                app(\App\Services\Kits::class)->composer($produit, $composants);
+                \App\Services\Kits::noter($produit->fresh());
+            } elseif ($etaitKit) {
+                app(\App\Services\Kits::class)->defaire($produit);   // redevient un produit simple, à approvisionner
+            }
+        });
 
         return redirect()->route('produits.index')->with('succes', "Produit « {$produit->designation} » mis à jour.");
     }
 
     public function destroy(Produit $produit)
     {
-        // Un produit encore en rayon ne disparaît pas : le stock doit d'abord être justifié (inventaire)
-        if ($produit->stock > 0) {
+        // Un produit qui entre dans un kit ne peut pas disparaître : le kit ne pourrait plus être formé
+        $kits = app(\App\Services\Kits::class)->kitsContenant($produit);
+        if ($kits->isNotEmpty()) {
+            return back()->with('erreur', "« {$produit->designation} » entre dans le kit ".$kits->pluck('designation')->map(fn ($n) => "« {$n} »")->implode(', ')
+                .' : retirez-le d\'abord de la composition, ou désactivez simplement le produit.');
+        }
+        // Un produit encore en rayon ne disparaît pas : le stock doit d'abord être justifié (inventaire). Un kit n'a pas de stock propre.
+        if ($produit->stock > 0 && ! $produit->est_kit) {
             return back()->with('erreur', "« {$produit->designation} » a encore ".qte($produit->stock)." {$produit->unite} en stock. "
                 .'Mettez le stock à zéro par un inventaire (avec le motif : perte, casse…) ou désactivez simplement le produit.');
         }
@@ -160,6 +183,32 @@ class ProduitController extends Controller
             'stock_initial' => ['nullable', 'numeric', 'min:0'],
             'image' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ]);
+        // Kit : composition obligatoire ; son coût est celui de ses composants, il n'a ni stock propre ni conditionnement
+        $d['est_kit'] = $request->boolean('est_kit');
+        if ($d['est_kit']) {
+            if ($produit && ! $produit->est_kit && $produit->stock > 0) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['est_kit' => "« {$produit->designation} » a encore ".qte($produit->stock)
+                    ." {$produit->unite} en stock : un kit n'a pas de stock propre. Mettez d'abord son stock à zéro (inventaire), ou créez un nouveau produit pour le kit."]);
+            }
+            $request->validate([
+                'composants' => ['required', 'array', 'min:1', 'max:'.\App\Services\Kits::MAX_COMPOSANTS],
+                'composants.*.produit_id' => ['nullable', 'integer'],
+                'composants.*.quantite' => ['nullable', 'numeric', 'min:0.01'],
+            ], ['composants.required' => 'Ajoutez les produits qui composent le kit.']);
+            $d['composants'] = [];
+            foreach ($request->composants as $c) {
+                if (! empty($c['produit_id']) && (float) ($c['quantite'] ?? 0) > 0) {
+                    $d['composants'][(int) $c['produit_id']] = ($d['composants'][(int) $c['produit_id']] ?? 0) + (float) $c['quantite'];
+                }
+            }
+            if (! $d['composants']) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['composants' => 'Ajoutez les produits qui composent le kit, avec leur quantité.']);
+            }
+            $composants = Produit::whereIn('id', array_keys($d['composants']))->get(['id', 'prix_achat']);
+            $d['prix_achat'] = (int) round($composants->sum(fn ($p) => $p->prix_achat * $d['composants'][$p->id]));
+            $d['conditionnement'] = $d['qte_conditionnement'] = $d['prix_conditionnement'] = null;
+            $d['stock_initial'] = null;
+        }
         if (! boutique()->vente_a_perte && $d['prix_achat'] > 0 && $d['prix_vente'] < $d['prix_achat']) {
             throw \Illuminate\Validation\ValidationException::withMessages(['prix_vente' => 'Le prix de vente ('.gnf($d['prix_vente'])
                 .') est inférieur au prix d\'achat ('.gnf($d['prix_achat']).'). La vente à perte est désactivée dans les paramètres.']);
@@ -200,7 +249,7 @@ class ProduitController extends Controller
                 default => null,
             };
         }
-        $d['suivi_serie'] = $request->boolean('suivi_serie');
+        $d['suivi_serie'] = ! $d['est_kit'] && $request->boolean('suivi_serie');
         if ($request->has('en_vitrine')) {
             $d['en_vitrine'] = $request->boolean('en_vitrine');
         }
@@ -214,6 +263,10 @@ class ProduitController extends Controller
             'produit' => $produit,
             'categories' => Categorie::orderBy('nom')->get(),
             'fournisseurs' => Fournisseur::orderBy('nom')->get(),
+            // Produits qui peuvent entrer dans un kit (pas un autre kit, pas un article suivi par numéro de série)
+            'composables' => Produit::stockables()->where('suivi_serie', false)->when($produit->exists, fn ($q) => $q->whereKeyNot($produit->id))
+                ->orderBy('designation')->get(['id', 'designation', 'unite', 'prix_achat', 'stock']),
+            'composition' => $produit->exists ? $produit->composants()->get(['composant_id', 'quantite']) : collect(),
         ];
     }
 

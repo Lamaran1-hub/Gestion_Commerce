@@ -28,7 +28,7 @@ class Reapprovisionnement
         $ventes = $this->unitesVendues(now()->subDays(self::JOURS_ANALYSE));
         $enCommande = app(CommandesFournisseur::class)->enCommande();   // déjà commandé, pas encore arrivé
 
-        return Produit::where('actif', true)->with('fournisseur')->get()->map(function (Produit $p) use ($ventes, $couverture, $enCommande) {
+        return Produit::stockables()->where('actif', true)->with('fournisseur')->get()->map(function (Produit $p) use ($ventes, $couverture, $enCommande) {
             $vendu = (float) ($ventes[$p->id] ?? 0);
             $parJour = $vendu / self::JOURS_ANALYSE;
             $stock = max(0.0, (float) $p->stock) + (float) ($enCommande[$p->id] ?? 0);   // stock « à venir » compris
@@ -70,7 +70,7 @@ class Reapprovisionnement
     {
         $vendusRecemment = $this->unitesVendues(now()->subDays(self::JOURS_DORMANT))->keys();
 
-        return Produit::where('actif', true)->where('stock', '>', 0)->whereNotIn('id', $vendusRecemment)
+        return Produit::stockables()->where('actif', true)->where('stock', '>', 0)->whereNotIn('id', $vendusRecemment)
             ->orderByRaw('stock * prix_achat DESC')->get()
             ->map(fn (Produit $p) => ['produit' => $p, 'valeur' => (int) round($p->stock * $p->prix_achat),
                 'derniere_vente' => DB::table('lignes_vente')->join('ventes', 'ventes.id', '=', 'lignes_vente.vente_id')

@@ -37,7 +37,7 @@ class TransfertController extends Controller
 
         return view('transferts.create', [
             'destinations' => $autres,
-            'produits' => Produit::where('actif', true)->where('stock', '>', 0)->orderBy('designation')->get(['id', 'designation', 'code_barre', 'stock', 'unite', 'prix_achat']),
+            'produits' => Produit::stockables()->where('actif', true)->where('stock', '>', 0)->orderBy('designation')->get(['id', 'designation', 'code_barre', 'stock', 'unite', 'prix_achat']),
         ]);
     }
 

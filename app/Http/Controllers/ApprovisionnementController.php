@@ -27,7 +27,7 @@ class ApprovisionnementController extends Controller
     {
         return view('approvisionnements.create', [
             'fournisseurs' => Fournisseur::orderBy('nom')->get(),
-            'produits' => Produit::where('actif', true)->orderBy('designation')->get(['id', 'designation', 'code_barre', 'prix_achat', 'prix_vente', 'stock', 'unite', 'conditionnement', 'qte_conditionnement', 'fournisseur_id']),
+            'produits' => Produit::stockables()->where('actif', true)->orderBy('designation')->get(['id', 'designation', 'code_barre', 'prix_achat', 'prix_vente', 'stock', 'unite', 'conditionnement', 'qte_conditionnement', 'fournisseur_id']),
             'produitChoisi' => $request->integer('produit_id') ?: null,
             // Réceptionner une commande : fournisseur et quantités restantes préremplis
             'commande' => $request->integer('commande')

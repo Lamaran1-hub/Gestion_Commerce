@@ -19,6 +19,14 @@ class Produit extends Model
     protected static function booted(): void
     {
         static::updated(function (Produit $p) {
+            // Le coût d'un composant change : le coût des kits qui le contiennent suit
+            if ($p->wasChanged('prix_achat') && ! $p->est_kit) {
+                app(\App\Services\Kits::class)->apresChangementCout($p->id);
+            }
+            // Composant désactivé ou réactivé : les kits ne peuvent plus (ou de nouveau) être formés
+            if ($p->wasChanged('actif') && ! $p->est_kit) {
+                app(\App\Services\Kits::class)->apresMouvement($p->id);
+            }
             foreach (array_keys(HistoriquePrix::CHAMPS) as $champ) {
                 if (! $p->wasChanged($champ)) {
                     continue;
@@ -47,11 +55,11 @@ class Produit extends Model
     // « stock » n'est volontairement pas modifiable en masse : il passe par StockService
     protected $fillable = [
         'categorie_id', 'fournisseur_id', 'designation', 'code_barre', 'unite', 'conditionnement', 'qte_conditionnement', 'prix_conditionnement',
-        'prix_achat', 'prix_vente', 'taux_tva', 'prix_gros', 'quantite_gros', 'seuil_alerte', 'image', 'actif', 'en_vitrine', 'garantie_mois', 'suivi_serie',
+        'prix_achat', 'prix_vente', 'taux_tva', 'prix_gros', 'quantite_gros', 'seuil_alerte', 'image', 'actif', 'en_vitrine', 'garantie_mois', 'suivi_serie', 'est_kit',
     ];
 
     protected $casts = [
-        'garantie_mois' => 'integer', 'suivi_serie' => 'boolean',
+        'garantie_mois' => 'integer', 'suivi_serie' => 'boolean', 'est_kit' => 'boolean',
         'prix_achat' => 'integer',
         'prix_vente' => 'integer',
         'taux_tva' => 'float',
@@ -113,7 +121,19 @@ class Produit extends Model
 
     public function scopeEnAlerte(Builder $q): Builder
     {
-        return $q->whereColumn('stock', '<=', 'seuil_alerte');
+        return $q->whereColumn('stock', '<=', 'seuil_alerte')->where('est_kit', false);
+    }
+
+    /** Produits qui ont un stock propre (les kits n'en ont pas : leur stock est celui de leurs composants). */
+    public function scopeStockables(Builder $q): Builder
+    {
+        return $q->where('est_kit', false);
+    }
+
+    /** Composition d'un kit. */
+    public function composants(): HasMany
+    {
+        return $this->hasMany(ComposantKit::class, 'kit_id');
     }
 
     public function scopeRecherche(Builder $q, ?string $terme): Builder
@@ -127,7 +147,7 @@ class Produit extends Model
 
     public function enAlerte(): bool
     {
-        return $this->stock <= $this->seuil_alerte;
+        return ! $this->est_kit && $this->stock <= $this->seuil_alerte;
     }
 
     public function etatStock(): string
@@ -142,6 +162,6 @@ class Produit extends Model
 
     public function valeurStock(): int
     {
-        return (int) round(max($this->stock, 0) * $this->prix_achat);
+        return $this->est_kit ? 0 : (int) round(max($this->stock, 0) * $this->prix_achat);   // un kit n'est que ses composants, déjà comptés
     }
 }

@@ -117,9 +117,9 @@ class Reseau
         $caJour = $ventes()->whereBetween('date_vente', $jour)->selectRaw('boutique_id, SUM(total_ttc) as ca, COUNT(*) as nb')->get()->keyBy('boutique_id');
         $caMois = $ventes()->whereBetween('date_vente', $mois)->pluck(DB::raw('SUM(total_ttc)'), 'boutique_id');
         $credits = $ventes()->pluck(DB::raw('SUM(total_ttc - montant_paye)'), 'boutique_id');
-        $stock = DB::table('produits')->whereIn('boutique_id', $ids)->whereNull('deleted_at')->where('stock', '>', 0)
+        $stock = DB::table('produits')->whereIn('boutique_id', $ids)->whereNull('deleted_at')->where('est_kit', false)->where('stock', '>', 0)
             ->groupBy('boutique_id')->pluck(DB::raw('SUM(stock * prix_achat)'), 'boutique_id');
-        $ruptures = DB::table('produits')->whereIn('boutique_id', $ids)->whereNull('deleted_at')->where('actif', true)->where('stock', '<=', 0)
+        $ruptures = DB::table('produits')->whereIn('boutique_id', $ids)->whereNull('deleted_at')->where('actif', true)->where('est_kit', false)->where('stock', '<=', 0)
             ->groupBy('boutique_id')->pluck(DB::raw('COUNT(*)'), 'boutique_id');
         $enRoute = DB::table('transferts')->whereIn('boutique_destination_id', $ids)->where('statut', 'envoye')
             ->groupBy('boutique_destination_id')->pluck(DB::raw('COUNT(*)'), 'boutique_destination_id');

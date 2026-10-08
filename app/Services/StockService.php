@@ -18,6 +18,13 @@ class StockService
     {
         return DB::transaction(function () use ($produit, $type, $quantite, $reference, $motif, $forcer) {
             $p = Produit::withTrashed()->whereKey($produit->id)->lockForUpdate()->firstOrFail();
+            // Kit : ce sont ses composants qui sortent ou rentrent
+            if ($p->est_kit) {
+                $m = app(Kits::class)->mouvement($p, $type, $quantite, $reference, $motif, $forcer);
+                $produit->setAttribute('stock', Produit::withTrashed()->whereKey($p->id)->value('stock'));
+
+                return $m;
+            }
             $nouveau = round($p->stock + $quantite, 2);
 
             if ($nouveau < 0 && ! $forcer && ! config('gestion.stock_negatif_autorise')) {
@@ -29,6 +36,7 @@ class StockService
 
             $p->forceFill(['stock' => $nouveau])->save();
             $produit->setAttribute('stock', $nouveau);
+            app(Kits::class)->apresMouvement($p->id);
 
             return MouvementStock::create([
                 'produit_id' => $p->id,
