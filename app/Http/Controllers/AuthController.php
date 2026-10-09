@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\JournalActivite;
+use App\Services\SecuriteConnexion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -41,6 +42,8 @@ class AuthController extends Controller
         if (! Auth::attempt($identifiants)) {
             RateLimiter::hit($cle, self::BLOCAGE_SECONDES);
             Log::warning('Connexion refusée', ['email' => Str::lower($identifiants['email']), 'ip' => $request->ip(), 'essais' => RateLimiter::attempts($cle)]);
+            // Historique du compte visé ; au moment où il se bloque, son titulaire est prévenu
+            app(SecuriteConnexion::class)->echec($identifiants['email'], $request, RateLimiter::attempts($cle) === self::ESSAIS_MAX);
             throw ValidationException::withMessages(['email' => __('auth.failed')]);
         }
         RateLimiter::clear($cle);
@@ -55,6 +58,7 @@ class AuthController extends Controller
         $request->session()->put('derniere_activite', now()->timestamp);
         $request->session()->forget('boutique_active');
         $user->forceFill(['derniere_connexion' => now()])->save();
+        app(SecuriteConnexion::class)->succes($user, $request);   // nouvel appareil : le titulaire est prévenu
         JournalActivite::noter('connexion', $user->nomComplet().' s\'est connecté(e)');
 
         // L'appareil retient la boutique : son logo s'affichera à la prochaine connexion

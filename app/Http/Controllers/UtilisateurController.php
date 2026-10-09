@@ -14,8 +14,12 @@ class UtilisateurController extends Controller
 {
     public function index()
     {
+        $utilisateurs = User::where('boutique_id', boutique()->id)->with('role')->orderBy('nom')->get();
+
         return view('utilisateurs.index', [
-            'utilisateurs' => User::where('boutique_id', boutique()->id)->with('role')->orderBy('nom')->get(),
+            'utilisateurs' => $utilisateurs,
+            // Mots de passe faux des dernières 24 h : signe d'un compte visé
+            'echecs' => \App\Services\SecuriteConnexion::echecsRecents($utilisateurs->pluck('id')),
             'max' => boutique()->plan?->max_utilisateurs,
         ]);
     }

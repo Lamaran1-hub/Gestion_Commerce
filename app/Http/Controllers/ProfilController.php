@@ -14,7 +14,8 @@ class ProfilController extends Controller
 {
     public function edit(Request $request)
     {
-        return view('profil', ['user' => $request->user(), 'appareils' => Appareils::liste($request->user(), $request->session()->getId())]);
+        return view('profil', ['user' => $request->user(), 'appareils' => Appareils::liste($request->user(), $request->session()->getId()),
+            'connexions' => app(\App\Services\SecuriteConnexion::class)->dernieres($request->user())]);
     }
 
     /** Déconnecte un appareil (téléphone perdu, ordinateur partagé). */

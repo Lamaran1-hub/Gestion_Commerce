@@ -52,6 +52,28 @@
                 </div>
             </form>
         </div>
+        @if ($connexions->isNotEmpty())
+            <div class="col-12">
+                <div class="bloc" id="connexions">
+                    <div class="bloc-entete"><h2 class="mb-0"><i class="bi bi-clock-history me-1"></i>Dernières connexions à votre compte</h2></div>
+                    <div class="table-responsive"><table class="table mb-0 align-middle">
+                        <tbody>
+                        @foreach ($connexions as $c)
+                            <tr class="{{ $c->reussie ? '' : 'table-warning' }}">
+                                <td class="text-nowrap small">{{ $c->created_at->format('d/m/Y H:i') }}<div class="text-doux">{{ $c->created_at->diffForHumans() }}</div></td>
+                                <td><div class="fw-semibold small">{{ $c->appareil }}</div><div class="small text-doux">{{ $c->ip ?: 'adresse inconnue' }}</div></td>
+                                <td class="text-end">
+                                    @if (! $c->reussie)<span class="etat etat-rupture">mot de passe incorrect</span>
+                                    @elseif ($c->nouvel_appareil)<span class="etat etat-alerte">nouvel appareil</span>
+                                    @else<span class="etat etat-ok">réussie</span>@endif</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table></div>
+                    <div class="bloc-corps small text-doux border-top">Vous êtes prévenu par e-mail quand votre compte est ouvert sur un nouvel appareil, ou bloqué après plusieurs mots de passe incorrects.</div>
+                </div>
+            </div>
+        @endif
         @if ($appareils->isNotEmpty())
             <div class="col-12">
                 <div class="bloc" id="appareils">

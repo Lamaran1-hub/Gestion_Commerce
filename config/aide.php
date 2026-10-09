@@ -435,6 +435,8 @@ return [
                 'Pour un employé (téléphone perdu, départ) : Utilisateurs → bouton de déconnexion sur sa ligne. Désactiver un compte le déconnecte aussi partout.',
                 'Changez ensuite le mot de passe. Changer de mot de passe ou d\'adresse e-mail envoie un message de sécurité au titulaire du compte.',
                 'Changer l\'adresse e-mail demande le mot de passe actuel : quelqu\'un qui trouve votre téléphone ouvert ne peut pas s\'approprier votre compte.',
+                '« Dernières connexions » (Mon profil) liste les connexions réussies et les mots de passe incorrects. Un e-mail vous prévient quand votre compte est ouvert sur un nouvel appareil, ou bloqué après 5 mots de passe faux.',
+                'Dans Utilisateurs, un compte visé par des mots de passe faux affiche « N mot(s) de passe faux (24 h) ».',
             ],
             'lien' => 'profil.edit'],
 

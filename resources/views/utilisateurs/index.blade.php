@@ -17,7 +17,8 @@
                         <td><div class="d-flex align-items-center gap-2"><span class="avatar">{{ $u->initiales() }}</span><span class="fw-semibold">{{ $u->nomComplet() }}</span>
                             @if ($u->id === auth()->id())<span class="etat etat-neutre">vous</span>@endif</div></td>
                         <td>{{ $u->email }}</td><td>{{ $u->role?->nom }}</td>
-                        <td class="text-doux">{{ $u->derniere_connexion?->diffForHumans() ?? 'Jamais' }}</td>
+                        <td class="text-doux">{{ $u->derniere_connexion?->diffForHumans() ?? 'Jamais' }}
+                            @if ($echecs[$u->id] ?? 0)<div class="small text-danger" title="Mots de passe incorrects saisis pour ce compte"><i class="bi bi-exclamation-triangle me-1"></i>{{ $echecs[$u->id] }} mot(s) de passe faux (24 h)</div>@endif</td>
                         <td><span class="etat {{ $u->actif ? 'etat-ok' : 'etat-neutre' }}">{{ $u->actif ? 'Actif' : 'Désactivé' }}</span></td>
                         <td class="text-end text-nowrap"><a href="{{ route('utilisateurs.edit', $u) }}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
                             @if ($u->actif && $u->id !== auth()->id())
