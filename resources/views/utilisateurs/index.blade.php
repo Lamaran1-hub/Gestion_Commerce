@@ -21,6 +21,8 @@
                         <td><span class="etat {{ $u->actif ? 'etat-ok' : 'etat-neutre' }}">{{ $u->actif ? 'Actif' : 'Désactivé' }}</span></td>
                         <td class="text-end text-nowrap"><a href="{{ route('utilisateurs.edit', $u) }}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
                             @if ($u->actif && $u->id !== auth()->id())
+                                <form method="post" action="{{ route('utilisateurs.deconnecter', $u) }}" class="d-inline" data-confirmer="Déconnecter {{ $u->nomComplet() }} de tous ses appareils ? Il devra se reconnecter avec son mot de passe." data-confirmer-bouton="Déconnecter">@csrf
+                                    <button class="btn btn-sm btn-light" title="Déconnecter de tous ses appareils" aria-label="Déconnecter de tous ses appareils"><i class="bi bi-box-arrow-right"></i></button></form>
                                 <form method="post" action="{{ route('utilisateurs.destroy', $u) }}" class="d-inline" data-confirmer="Désactiver ce compte ? La personne ne pourra plus se connecter.">@csrf @method('delete')
                                     <button class="btn btn-sm btn-light text-danger" title="Désactiver"><i class="bi bi-person-slash"></i></button></form>
                             @endif</td>

@@ -68,6 +68,9 @@ class UtilisateurController extends Controller
             $this->verifierLimite(); // réactiver un compte occupe une place de la formule
         }
         $utilisateur->update($d);
+        if ($utilisateur->wasChanged('actif') && ! $utilisateur->actif) {
+            \App\Support\Appareils::deconnecterTous($utilisateur);
+        }
         // Nouveau mot de passe donné par l'administrateur (téléphone perdu, employé qui part) : ses autres appareils sont déconnectés
         if (isset($d['password']) && $utilisateur->id !== auth()->id()) {
             \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $utilisateur->id)->delete();
@@ -75,6 +78,19 @@ class UtilisateurController extends Controller
         }
 
         return redirect()->route('utilisateurs.index')->with('succes', 'Utilisateur mis à jour.');
+    }
+
+    /** Téléphone perdu ou volé, ordinateur resté ouvert : le compte est fermé sur tous ses appareils. */
+    public function deconnecter(User $utilisateur)
+    {
+        $this->verifierBoutique($utilisateur);
+        if ($utilisateur->id === auth()->id()) {
+            throw new OperationRefusee('Pour vos propres appareils, utilisez « Mon profil » → Appareils connectés.');
+        }
+        $n = \App\Support\Appareils::deconnecterTous($utilisateur);
+        JournalActivite::noter('securite', "{$utilisateur->nomComplet()} déconnecté de tous ses appareils ({$n}) par l'administrateur");
+
+        return back()->with('succes', "{$utilisateur->nomComplet()} est déconnecté de tous ses appareils ({$n}). Changez aussi son mot de passe si l'appareil a été perdu ou volé.");
     }
 
     public function destroy(User $utilisateur)
@@ -86,6 +102,7 @@ class UtilisateurController extends Controller
         $this->protegerDernierAdmin($utilisateur, ['actif' => false]);
         // On désactive au lieu de supprimer : les ventes gardent le nom du vendeur
         $utilisateur->update(['actif' => false]);
+        \App\Support\Appareils::deconnecterTous($utilisateur);   // plus aucune session ouverte, même inactive
         JournalActivite::noter('utilisateur', "Désactivation du compte de {$utilisateur->nomComplet()}");
 
         return back()->with('succes', "Le compte de {$utilisateur->nomComplet()} est désactivé.");

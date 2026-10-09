@@ -426,6 +426,18 @@ return [
             ],
             'lien' => 'utilisateurs.index', 'fonction' => 'equipe', 'permission' => 'utilisateurs.gerer'],
 
+        'appareils' => ['rubrique' => 'equipe', 'titre' => 'Téléphone perdu ou volé : déconnecter un appareil',
+            'mots' => 'sécurité appareil téléphone perdu volé session connecté déconnecter piratage compte e-mail mot de passe',
+            'resume' => 'Voyez où votre compte est ouvert et fermez-le à distance ; l\'administrateur peut le faire pour un employé.',
+            'etapes' => [
+                'Mon profil → « Appareils connectés » : chaque appareil apparaît (navigateur, téléphone ou ordinateur, adresse, dernière activité).',
+                '« Déconnecter » ferme le compte sur cet appareil ; « Déconnecter tous les autres » ne garde que celui que vous utilisez.',
+                'Pour un employé (téléphone perdu, départ) : Utilisateurs → bouton de déconnexion sur sa ligne. Désactiver un compte le déconnecte aussi partout.',
+                'Changez ensuite le mot de passe. Changer de mot de passe ou d\'adresse e-mail envoie un message de sécurité au titulaire du compte.',
+                'Changer l\'adresse e-mail demande le mot de passe actuel : quelqu\'un qui trouve votre téléphone ouvert ne peut pas s\'approprier votre compte.',
+            ],
+            'lien' => 'profil.edit'],
+
         'integrite' => ['rubrique' => 'equipe', 'titre' => 'Registre anti-fraude et intégrité',
             'mots' => 'fraude sécurité registre intégrité empreinte modification suppression contrôle',
             'resume' => 'Chaque vente, annulation et clôture est signée : toute modification est détectée.',

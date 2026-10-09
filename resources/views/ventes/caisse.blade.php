@@ -568,7 +568,7 @@
         // Carte cadeau vérifiée : utilisée après l'avoir, jamais au-delà de son solde
         const carte = soldeCarte > 0 ? Math.min(soldeCarte, Math.max(0, t.total - points - avoir)) : 0;
         if (soldeCarte > 0) {
-            $('etatCarte').innerHTML = `<span class="text-success fw-semibold">${messageCarte}</span>`
+            $('etatCarte').innerHTML = `<span class="text-success fw-semibold">${echapper(messageCarte)}</span>`
                 + (carte ? `<br><span class="text-success">Payé avec la carte : ${gnf(carte)} — reste ${gnf(t.total - points - avoir - carte)}</span>` : '');
         }
         avoir += carte;   // la suite du calcul traite la carte comme un règlement déjà fait
@@ -650,7 +650,7 @@
             const r = await fetch($('carte_cadeau').dataset.url + '?code=' + encodeURIComponent(code), { headers: { Accept: 'application/json' } });
             if (r.status === 429) return oublierCarte('<span class="text-danger">Trop d’essais : patientez une minute.</span>');
             const d = await r.json();
-            if (!d.ok) return oublierCarte(`<span class="text-danger fw-semibold">${d.message}</span>`);
+            if (!d.ok) return oublierCarte(`<span class="text-danger fw-semibold">${echapper(d.message)}</span>`);
             $('carte_cadeau').value = d.code;
             soldeCarte = d.solde; messageCarte = d.message;
             rendre();
