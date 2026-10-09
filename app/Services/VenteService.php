@@ -305,6 +305,8 @@ class VenteService
     {
         $produits = Produit::whereIn('id', $lignes->pluck('produit_id'))->get()->keyBy('id');
         $promotions = app(Promotions::class);
+        // Prix négociés avec ce client (vente à l'unité)
+        $negocies = $client ? \App\Models\PrixClient::where('client_id', $client->id)->whereIn('produit_id', $produits->keys())->pluck('prix', 'produit_id') : collect();
         $totalHt = 0;
         $details = [];
         foreach ($lignes as $l) {
@@ -316,6 +318,10 @@ class VenteService
             $prixSaisi = $peutModifierPrix && isset($l['prix_unitaire']);
             $prix = $prixSaisi ? (int) $l['prix_unitaire']
                 : ($parConditionnement ? $produit->prixConditionnement() : $produit->prixPour($quantite, $client));
+            // Prix convenu avec le client : appliqué s'il est plus bas (le prix de gros peut l'être encore plus)
+            if (! $prixSaisi && ! $parConditionnement && isset($negocies[$produit->id]) && $negocies[$produit->id] < $prix) {
+                $prix = (int) $negocies[$produit->id];
+            }
             // Promotion en cours : le client paie le plus bas du prix promo et du prix normal (ou de gros)
             $promo = $prixSaisi ? null : $promotions->prix($produit, $parConditionnement);
             $enPromo = $promo !== null && $promo < $prix;

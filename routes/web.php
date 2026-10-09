@@ -241,6 +241,8 @@ Route::middleware(['auth', 'boutique'])->group(function () {
         Route::get('/clients/{client}/modifier', [ClientController::class, 'edit'])->name('clients.edit');
         Route::put('/clients/{client}', [ClientController::class, 'update'])->name('clients.update');
         Route::delete('/clients/{client}', [ClientController::class, 'destroy'])->name('clients.destroy');
+        Route::post('/clients/{client}/prix', [\App\Http\Controllers\PrixClientController::class, 'store'])->middleware('can:ventes.remise')->name('clients.prix.store');
+        Route::delete('/clients/{client}/prix/{prix}', [\App\Http\Controllers\PrixClientController::class, 'destroy'])->middleware('can:ventes.remise')->name('clients.prix.destroy');
     });
     Route::resource('fournisseurs', FournisseurController::class)->except(['show'])->middleware('can:fournisseurs.gerer');
 

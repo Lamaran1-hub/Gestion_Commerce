@@ -166,6 +166,18 @@ return [
             ],
             'lien' => 'ventes.create', 'permission' => 'ventes.creer'],
 
+        'prix-convenus' => ['rubrique' => 'caisse', 'titre' => 'Prix convenus avec un client (revendeur, entreprise)',
+            'mots' => 'prix client négocié convenu spécial revendeur tarif remise fidèle entreprise contrat',
+            'resume' => 'Un client fidèle paie certains produits à un prix convenu, appliqué tout seul à la caisse.',
+            'etapes' => [
+                'Ouvrez la fiche du client → « Prix convenus » : choisissez le produit et le prix accordé.',
+                'À la caisse (et sur les devis), dès que ce client est choisi, ses prix s\'appliquent avec l\'étiquette « prix convenu ».',
+                'Le prix vaut pour la vente à l\'unité ; un carton garde son prix. Une promotion plus basse, ou le prix de gros s\'il est plus bas, l\'emporte.',
+                'Accorder un prix est une remise durable : réservé à ceux qui ont le droit de faire des remises, jamais sous le prix d\'achat, et noté au journal.',
+                'Fusion de fiches en double : les prix convenus suivent la fiche conservée. Passage HT ↔ TTC : ils sont convertis comme les autres prix.',
+            ],
+            'lien' => 'clients.index', 'permission' => 'ventes.remise'],
+
         'avoir' => ['rubrique' => 'caisse', 'titre' => 'Rendre un avoir au lieu de l\'argent',
             'mots' => 'avoir bon d achat retour échange crédit client remboursement reprise',
             'resume' => 'Le client rapporte un article : il repart avec un avoir à dépenser chez vous, l\'argent reste en caisse.',

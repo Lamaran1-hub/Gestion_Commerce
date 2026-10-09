@@ -213,6 +213,10 @@ class ClientController extends Controller
             'totalAchats' => (int) $client->ventes()->validees()->sum('total_ttc'),
             'dernierAchat' => $client->ventes()->validees()->max('date_vente'),
             'avoirs' => \App\Models\Avoir::where('client_id', $client->id)->with(['vente', 'retour'])->latest('id')->limit(10)->get(),
+            'prixNegocies' => \App\Models\PrixClient::where('client_id', $client->id)->with('produit')->get()->sortBy(fn ($p) => $p->produit?->designation)->values(),
+            // Produits proposés pour un nouveau prix convenu (seulement pour qui peut accorder des remises)
+            'produitsPrix' => auth()->user()->aPermission('ventes.remise')
+                ? \App\Models\Produit::where('actif', true)->orderBy('designation')->get(['id', 'designation', 'prix_vente', 'prix_achat', 'unite']) : collect(),
         ]);
     }
 

@@ -43,6 +43,10 @@ class FusionClients
             $d = Client::whereKey($doublon->id)->lockForUpdate()->firstOrFail();
             $ventes = Vente::withoutGlobalScopes()->where('boutique_id', $d->boutique_id)->where('client_id', $d->id)->orderBy('id')->pluck('id')->all();
 
+            // Prix négociés : ceux du doublon passent sur la fiche conservée, sauf pour un produit qu'elle a déjà
+            $dejaNegocies = DB::table('prix_clients')->where('client_id', $g->id)->pluck('produit_id');
+            DB::table('prix_clients')->where('client_id', $d->id)->whereIn('produit_id', $dejaNegocies)->delete();
+            DB::table('prix_clients')->where('client_id', $d->id)->update(['client_id' => $g->id]);
             foreach (self::TABLES as $table) {
                 DB::table($table)->where('boutique_id', $d->boutique_id)->where('client_id', $d->id)->update(['client_id' => $g->id]);
             }

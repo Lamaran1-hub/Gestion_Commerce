@@ -42,6 +42,12 @@ class ConversionPrixTva
                     $nb++;
                 }
             });
+            // Prix négociés avec les clients : même conversion, le client paie le même montant
+            \App\Models\PrixClient::with('produit')->get()->each(function (\App\Models\PrixClient $pc) use ($ajuster, $tauxDe) {
+                if ($pc->produit && ($taux = $tauxDe($pc->produit)) > 0) {
+                    $pc->update(['prix' => $ajuster($pc->prix, $taux)]);
+                }
+            });
             // Promotions à prix fixe encore en cours ou à venir (un pourcentage, lui, ne change pas)
             Promotion::where('type', 'prix')->whereDate('fin', '>=', now()->toDateString())->with('produit')->get()
                 ->each(function (Promotion $promo) use ($ajuster, $tauxDe, $boutique) {

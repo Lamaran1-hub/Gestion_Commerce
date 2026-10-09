@@ -73,6 +73,8 @@ class VenteController extends Controller
             'clientsTous' => $clientsTous,
             'nbClients' => $nbClients,
             'echange' => $echange,
+            // Prix convenus des clients préchargés : appliqués dès que le client est choisi
+            'tarifsClients' => \App\Models\PrixClient::parClient($clients->pluck('id')),
             'clientChoisi' => $clientChoisi,
             // Dette de chaque client : la caisse prévient avant de dépasser le plafond ou le délai de crédit
             'dettes' => \App\Support\ClientCaisse::dettes($clientsTous ? null : $clients->pluck('id')),
@@ -89,7 +91,9 @@ class VenteController extends Controller
         $clients = Client::recherche($q)->orderBy('nom')->limit(20)->get(\App\Support\ClientCaisse::COLONNES);
         $dettes = \App\Support\ClientCaisse::dettes($clients->pluck('id'));
 
-        return response()->json($clients->map(fn ($c) => \App\Support\ClientCaisse::donnees($c, $dettes[$c->id] ?? null))->values());
+        $tarifs = \App\Models\PrixClient::parClient($clients->pluck('id'));
+
+        return response()->json($clients->map(fn ($c) => \App\Support\ClientCaisse::donnees($c, $dettes[$c->id] ?? null) + ['tarifs' => (object) ($tarifs[$c->id] ?? [])])->values());
     }
 
     public function rechercheProduits(Request $request)

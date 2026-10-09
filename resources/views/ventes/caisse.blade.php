@@ -439,7 +439,12 @@
     // Même règle que le serveur : prix de gros pour un client grossiste ou à partir de la quantité de gros
     const clientGrossiste = () => $('client_id').selectedOptions[0]?.dataset.grossiste === '1';
     const estGros = (l) => !l.cond && !!l.produit.gros && (clientGrossiste() || (l.produit.qteGros && l.quantite >= l.produit.qteGros));
-    const prixNormal = (l) => l.cond ? l.produit.prixCond : (estGros(l) ? l.produit.gros : l.produit.prix);
+    // Prix convenu avec le client choisi (vente à l'unité) : appliqué s'il est plus bas que le prix normal ou de gros
+    const tarifsClients = @json((object) $tarifsClients);
+    const prixConvenu = (l) => { const t = l.cond ? null : tarifsClients[$('client_id').value]?.[l.produit.id]; return t ? Number(t) : null; };
+    const prixBase = (l) => l.cond ? l.produit.prixCond : (estGros(l) ? l.produit.gros : l.produit.prix);
+    const avecPrixConvenu = (l) => prixConvenu(l) !== null && prixConvenu(l) < prixBase(l);
+    const prixNormal = (l) => avecPrixConvenu(l) ? prixConvenu(l) : prixBase(l);
     const prixPromo = (l) => l.cond ? l.produit.promoCond : l.produit.promo;
     const enPromo = (l) => !!prixPromo(l) && prixPromo(l) < prixNormal(l);
     const prixUnit = (l) => enPromo(l) ? prixPromo(l) : prixNormal(l);
@@ -512,7 +517,8 @@
                     <option value="cond" ${l.cond ? 'selected' : ''}>${echapper(l.produit.cond)} de ${formatQte(l.produit.qteCond)}</option></select>` : ''}
                 <small class="text-doux">× ${gnf(prixUnit(l))}</small>
                 ${enPromo(l) ? '<span class="etat etat-rupture">promo</span>' : ''}
-                ${estGros(l) && !enPromo(l) ? '<span class="etat etat-ok">prix de gros</span>' : (!l.cond && l.produit.gros && l.produit.qteGros ? `<small class="text-doux">gros dès ${formatQte(l.produit.qteGros)}</small>` : '')}
+                ${avecPrixConvenu(l) && !enPromo(l) ? '<span class="etat etat-ok">prix convenu</span>' : ''}
+                ${estGros(l) && !enPromo(l) && !avecPrixConvenu(l) ? '<span class="etat etat-ok">prix de gros</span>' : (!l.cond && l.produit.gros && l.produit.qteGros ? `<small class="text-doux">gros dès ${formatQte(l.produit.qteGros)}</small>` : '')}
               </div>
               ${conseilCond(l)}
               <div class="text-end"><button type="button" class="btn btn-sm btn-link text-danger p-0" data-action="retirer" data-id="${l.produit.id}">Retirer</button></div>
@@ -775,6 +781,7 @@
             let opt = [...$('client_id').options].find(o => o.value == c.id);
             if (!opt) {
                 opt = new Option(c.libelle, c.id);
+                tarifsClients[c.id] = c.tarifs || {};
                 Object.entries({ grossiste: c.grossiste, points: c.points, avoir: c.avoir, anniv: c.anniv, du: c.du, plafond: c.plafond, retard: c.retard })
                     .forEach(([k, v]) => opt.dataset[k] = v);
                 $('client_id').add(opt);

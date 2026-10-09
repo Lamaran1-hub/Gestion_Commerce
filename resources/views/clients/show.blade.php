@@ -109,6 +109,46 @@
                     </div>
                 </div>
             @endif
+            @if ($prixNegocies->isNotEmpty() || $produitsPrix->isNotEmpty())
+                {{-- Prix convenus avec ce client : appliqués d'office à la caisse dès qu'il est sélectionné --}}
+                <div class="bloc mt-3" id="prixNegocies">
+                    <div class="bloc-entete"><h2 class="mb-0"><i class="bi bi-tags me-1"></i>Prix convenus</h2><span class="small text-doux">{{ $prixNegocies->count() }} produit(s)</span></div>
+                    <div class="bloc-corps">
+                        @forelse ($prixNegocies as $pn)
+                            @php
+                                $normal = (int) ($pn->produit?->prix_vente ?? 0);
+                                $ecart = $normal > 0 ? round(($normal - $pn->prix) / $normal * 100, 1) : null;
+                            @endphp
+                            <div class="d-flex justify-content-between align-items-center gap-2 py-2 border-bottom small">
+                                <div class="min-w-0"><div class="fw-semibold">{{ $pn->produit?->designation ?? 'Produit supprimé' }}</div>
+                                    <div class="text-doux"><s>{{ gnf($normal) }}</s>@if ($ecart !== null) · − {{ number_format($ecart, 1, ',', ' ') }} %@endif
+                                        @if ($pn->produit && $pn->prix >= $normal)<span class="text-danger"> · plus avantageux que le prix normal : sans effet</span>@endif</div></div>
+                                <div class="d-flex align-items-center gap-2"><strong class="montant text-nowrap text-success">{{ gnf($pn->prix) }}</strong>
+                                    @can('ventes.remise')
+                                        <form method="post" action="{{ route('clients.prix.destroy', [$client, $pn]) }}" data-confirmer="Retirer ce prix convenu ? Le prix normal s'appliquera." data-confirmer-bouton="Retirer">
+                                            @csrf @method('delete')<button class="btn btn-sm btn-link text-danger p-0" aria-label="Retirer le prix convenu"><i class="bi bi-x-lg"></i></button></form>
+                                    @endcan</div>
+                            </div>
+                        @empty
+                            <p class="small text-doux mb-2">Aucun prix convenu : ce client paie les prix normaux (ou de gros s'il est grossiste).</p>
+                        @endforelse
+                        @can('ventes.remise')
+                            <form method="post" action="{{ route('clients.prix.store', $client) }}" class="mt-2">@csrf
+                                <select name="produit_id" class="form-select form-select-sm mb-2 @error('produit_id') is-invalid @enderror" aria-label="Produit" required>
+                                    <option value="">Produit…</option>
+                                    @foreach ($produitsPrix as $p)<option value="{{ $p->id }}" @selected(old('produit_id') == $p->id)>{{ $p->designation }} — {{ gnf($p->prix_vente) }}</option>@endforeach
+                                </select>
+                                <div class="input-group input-group-sm">
+                                    <input name="prix" data-montant inputmode="numeric" value="{{ old('prix') }}" class="form-control text-end @error('prix') is-invalid @enderror" placeholder="Prix convenu (GNF)" aria-label="Prix convenu" required>
+                                    <button class="btn btn-outline-primary">Enregistrer</button>
+                                </div>
+                                @error('prix')<div class="small text-danger mt-1">{{ $message }}</div>@enderror
+                                <div class="form-text">Appliqué automatiquement à la caisse et sur les devis dès que ce client est choisi (vente à l'unité).</div>
+                            </form>
+                        @endcan
+                    </div>
+                </div>
+            @endif
             @if ($client->notes)<div class="bloc bloc-corps mt-3"><strong>Notes :</strong> {{ $client->notes }}</div>@endif
             @can('clients.gerer')
                 <form method="post" action="{{ route('clients.destroy', $client) }}" class="mt-3" data-confirmer="Supprimer ce client ? Son historique d'achats est conservé.">@csrf @method('delete')
