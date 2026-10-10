@@ -46,6 +46,18 @@ return [
             ],
             'lien' => 'produits.create', 'permission' => 'produits.gerer'],
 
+        'marges' => ['rubrique' => 'demarrer', 'titre' => 'Le fournisseur augmente ses prix : protéger ses marges',
+            'mots' => 'marge hausse prix achat fournisseur augmentation coût rentabilité bénéfice prix de vente ajuster',
+            'resume' => 'Après une réception, les produits dont le coût a augmenté sont signalés avec un prix de vente suggéré.',
+            'etapes' => [
+                'Enregistrez la réception avec les nouveaux prix d\'achat. Sur la page de la réception, le bloc « Prix d\'achat en hausse » liste les produits concernés.',
+                'Pour chacun : ancien et nouveau coût, marge avant et après la hausse, et un prix suggéré qui redonne la marge d\'avant (arrondi aux 500 GNF).',
+                'Corrigez le prix si besoin puis « OK » : le nouveau prix s\'applique tout de suite à la caisse, et l\'historique des prix le note (« Ajustement de marge »).',
+                'Produits → filtre « Marge faible » : tous les produits dont la marge est sous 10 % du prix de vente. Leur nombre s\'affiche en haut de la liste.',
+                'Ces informations ne sont visibles que pour les rôles qui ont le droit de voir les prix d\'achat.',
+            ],
+            'lien' => 'approvisionnements.index', 'permission' => 'produits.prix_achat'],
+
         'kit' => ['rubrique' => 'demarrer', 'titre' => 'Créer un kit / pack (plusieurs produits vendus ensemble)',
             'mots' => 'kit pack lot coffret assortiment composé composition rentrée scolaire panier cadeau ensemble',
             'resume' => 'Un « Pack rentrée » ou un « Kit cuisine » se vend en un clic ; ce sont ses produits qui sortent du stock.',

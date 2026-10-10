@@ -185,6 +185,7 @@ Route::middleware(['auth', 'boutique'])->group(function () {
     });
     Route::middleware('can:produits.gerer')->group(function () {
         Route::get('/produits/nouveau', [ProduitController::class, 'create'])->name('produits.create');
+        Route::patch('/produits/{produit}/prix-vente', [ProduitController::class, 'prixVente'])->name('produits.prix-vente');
         Route::get('/produits/import', [ImportProduitController::class, 'create'])->middleware('fonction:import_catalogue')->name('produits.import');
         Route::get('/produits/import/modele', [ImportProduitController::class, 'modele'])->middleware('fonction:import_catalogue')->name('produits.import.modele');
         Route::post('/produits/import/apercu', [ImportProduitController::class, 'apercu'])->middleware('fonction:import_catalogue')->name('produits.import.apercu');

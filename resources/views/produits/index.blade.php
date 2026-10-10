@@ -6,7 +6,8 @@
         <div>
             <h1>Produits</h1>
             <div class="text-doux">{{ $produits->total() }} produit(s)@if ($voirAchat) · valeur du stock <strong class="montant">{{ gnf($valeurStock) }}</strong>@endif
-                @if ($nbAlertes) · <a href="{{ route('produits.index', ['etat' => 'alerte']) }}" class="text-warning-emphasis">{{ $nbAlertes }} à réapprovisionner</a>@endif</div>
+                @if ($nbAlertes) · <a href="{{ route('produits.index', ['etat' => 'alerte']) }}" class="text-warning-emphasis">{{ $nbAlertes }} à réapprovisionner</a>@endif
+                @if ($nbMargesFaibles) · <a href="{{ route('produits.index', ['etat' => 'marge']) }}" class="text-danger">{{ $nbMargesFaibles }} à marge faible</a>@endif</div>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{{ route('produits.export', ['excel'] + request()->query()) }}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
@@ -29,7 +30,8 @@
             <select name="etat" id="etat" class="form-select form-select-sm"><option value="">Tous</option>
                 <option value="alerte" @selected(request('etat') === 'alerte')>Sous le seuil</option>
                 <option value="rupture" @selected(request('etat') === 'rupture')>En rupture</option>
-                <option value="inactif" @selected(request('etat') === 'inactif')>Désactivés</option></select></div>
+                <option value="inactif" @selected(request('etat') === 'inactif')>Désactivés</option>
+                @can('produits.prix_achat')<option value="marge" @selected(request('etat') === 'marge')>Marge faible (moins de {{ rtrim(rtrim(number_format(\App\Support\Marges::seuil(), 1, ',', ''), '0'), ',') }} %)</option>@endcan</select></div>
         <div class="col-md-auto"><button class="btn btn-sm btn-primary">Filtrer</button> <a href="{{ route('produits.index') }}" class="btn btn-sm btn-light">Effacer</a></div>
     </form>
     <div class="bloc">

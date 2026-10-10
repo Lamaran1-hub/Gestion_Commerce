@@ -25,6 +25,8 @@ class ProduitController extends Controller
             'categories' => Categorie::orderBy('nom')->get(),
             'valeurStock' => (int) Produit::stockables()->where('stock', '>', 0)->sum(DB::raw('stock * prix_achat')),
             'nbAlertes' => Produit::where('actif', true)->enAlerte()->count(),
+            'nbMargesFaibles' => auth()->user()->aPermission('produits.prix_achat')
+                ? \App\Support\Marges::scopeFaibles(Produit::where('actif', true))->count() : 0,
         ]);
     }
 
@@ -128,6 +130,25 @@ class ProduitController extends Controller
         });
 
         return redirect()->route('produits.index')->with('succes', "Produit « {$produit->designation} » mis à jour.");
+    }
+
+    /** Ajustement rapide du prix de vente (après une hausse du prix d'achat). */
+    public function prixVente(Request $request, Produit $produit)
+    {
+        $request->merge(['prix_vente' => montant_saisi($request->prix_vente)]);
+        $prix = (int) $request->validate(['prix_vente' => ['required', 'integer', 'min:1']])['prix_vente'];
+        if (! boutique()->vente_a_perte && $produit->prix_achat > 0 && $prix < $produit->prix_achat) {
+            return back()->with('erreur', "« {$produit->designation} » : ".gnf($prix).' est sous le prix d\'achat ('.gnf($produit->prix_achat).').');
+        }
+        if ($produit->prix_gros && $prix <= $produit->prix_gros) {
+            return back()->with('erreur', "« {$produit->designation} » : le prix de vente doit rester au-dessus du prix de gros (".gnf($produit->prix_gros).').');
+        }
+        $ancien = (int) $produit->prix_vente;
+        \App\Models\HistoriquePrix::depuis('Ajustement de marge', fn () => $produit->update(['prix_vente' => $prix]));
+
+        return back()->with('succes', "« {$produit->designation} » : ".gnf($ancien).' → '.gnf($prix)
+            .' (marge '.number_format((float) \App\Support\Marges::taux($prix, (int) $produit->prix_achat), 1, ',', ' ').' %).'
+            .($produit->aConditionnement() ? ' Pensez au prix du '.$produit->conditionnement.'.' : ''));
     }
 
     public function destroy(Produit $produit)
@@ -282,6 +303,8 @@ class ProduitController extends Controller
             ->when($request->categorie_id, fn ($q) => $q->where('categorie_id', $request->categorie_id))
             ->when($request->etat === 'alerte', fn ($q) => $q->enAlerte())
             ->when($request->etat === 'rupture', fn ($q) => $q->where('stock', '<=', 0))
-            ->when($request->etat === 'inactif', fn ($q) => $q->where('actif', false));
+            ->when($request->etat === 'inactif', fn ($q) => $q->where('actif', false))
+            // Marge faible : réservé à qui voit les prix d'achat
+            ->when($request->etat === 'marge' && auth()->user()->aPermission('produits.prix_achat'), fn ($q) => \App\Support\Marges::scopeFaibles($q));
     }
 }

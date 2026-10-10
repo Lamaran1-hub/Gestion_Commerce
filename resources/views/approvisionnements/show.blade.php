@@ -28,6 +28,37 @@
         </table>
     </div>
     @if ($appro->note)<div class="bloc bloc-corps mt-3"><strong>Note :</strong> {{ $appro->note }}</div>@endif
+    @can('produits.prix_achat')
+        @php
+            $hausses = \App\Support\Marges::apresReception($appro);
+        @endphp
+        @if ($hausses->isNotEmpty())
+            {{-- Le fournisseur a augmenté ses prix : la marge de ces produits a baissé --}}
+            <div class="bloc mt-3 border-warning" id="hausses">
+                <div class="bloc-entete flex-wrap gap-1"><h2 class="mb-0"><i class="bi bi-graph-down-arrow me-1 text-warning-emphasis"></i>Prix d'achat en hausse : vérifiez vos marges</h2>
+                    <span class="small text-doux">{{ $hausses->count() }} produit(s)</span></div>
+                <div class="table-responsive"><table class="table mb-0 align-middle">
+                    <thead><tr><th>Produit</th><th class="text-end">Coût</th><th class="text-end">Marge</th><th class="text-end d-none d-md-table-cell">Prix de vente</th></tr></thead>
+                    <tbody>
+                    @foreach ($hausses as $h)
+                        <tr class="{{ $h['sous_seuil'] ? 'table-warning' : '' }}">
+                            <td><a href="{{ route('produits.show', $h['produit']) }}" class="fw-semibold">{{ $h['produit']->designation }}</a>
+                                @if ($h['deja_ajuste'])<div class="small text-success"><i class="bi bi-check2"></i> prix déjà ajusté</div>@endif</td>
+                            <td class="text-end text-nowrap"><span class="small text-doux"><s>{{ gnf($h['ancien']) }}</s></span><div class="fw-semibold">{{ gnf($h['nouveau']) }}</div>
+                                <div class="small text-danger">+{{ number_format(($h['nouveau'] - $h['ancien']) / $h['ancien'] * 100, 1, ',', ' ') }} %</div></td>
+                            <td class="text-end text-nowrap"><span class="small text-doux">{{ number_format((float) $h['marge_avant'], 1, ',', ' ') }} % →</span>
+                                <div class="fw-semibold {{ $h['sous_seuil'] ? 'text-danger' : '' }}">{{ number_format((float) $h['marge'], 1, ',', ' ') }} %</div></td>
+                            <td class="text-end d-none d-md-table-cell">@include('approvisionnements._prix-marge', ['h' => $h])</td>
+                        </tr>
+                        <tr class="d-md-none {{ $h['sous_seuil'] ? 'table-warning' : '' }}"><td colspan="3" class="text-end border-top-0 pt-0">@include('approvisionnements._prix-marge', ['h' => $h])</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table></div>
+                <div class="bloc-corps small text-doux border-top">Prix suggéré : celui qui redonne la marge d'avant la hausse (arrondi aux 500 GNF). Lignes surlignées : marge sous {{ rtrim(rtrim(number_format(\App\Support\Marges::seuil(), 1, ',', ''), '0'), ',') }} %.</div>
+            </div>
+        @endif
+    @endcan
 
     <div class="bloc mt-3">
         <div class="bloc-entete"><h2 class="mb-0"><i class="bi bi-cash-coin me-1"></i>Règlement du fournisseur</h2>
