@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\OperationRefusee;
 use App\Models\ClotureCaisse;
 use App\Models\Depense;
+use App\Models\FondCaisse;
 use App\Models\Acompte;
 use App\Models\PaiementFournisseur;
 use App\Models\JournalActivite;
@@ -46,6 +47,43 @@ class CaisseService
      *
      * @return array{nb_ventes:int, total_ventes:int, encaisse:array<string,int>, rembourse:array<string,int>, net:array<string,int>, especes_theoriques:int}
      */
+    public function fond(User $caissier, ?Carbon $jour = null): ?FondCaisse
+    {
+        return FondCaisse::where('user_id', $caissier->id)->whereDate('jour', ($jour ?? now())->toDateString())->first();
+    }
+
+    /** Ce qui a été laissé dans le tiroir à la dernière clôture : c'est le fond attendu ce matin. */
+    public function laisseLaVeille(User $caissier): ?int
+    {
+        return ClotureCaisse::where('user_id', $caissier->id)->whereDate('jour', '<', now()->toDateString())
+            ->whereNotNull('laisse_en_caisse')->latest('jour')->value('laisse_en_caisse');
+    }
+
+    /**
+     * Fond de caisse du jour. Il se déclare avant de vendre : après le premier encaissement, seul l'administrateur
+     * peut le corriger (sinon un fond diminué en fin de journée cacherait un manque).
+     */
+    public function declarerFond(User $caissier, int $montant, User $auteur): FondCaisse
+    {
+        if ($this->estCloturee($caissier)) {
+            throw new OperationRefusee('La caisse est déjà clôturée aujourd\'hui.');
+        }
+        $fond = $this->fond($caissier);
+        $aEncaisse = Paiement::where('user_id', $caissier->id)->whereDate('date_paiement', now()->toDateString())->exists();
+        if ($fond && $aEncaisse && ! $auteur->role?->systeme) {
+            throw new OperationRefusee('Des ventes ont déjà été encaissées : seul l\'administrateur peut corriger le fond de caisse.');
+        }
+        $avant = $fond?->montant;
+        $fond ??= new FondCaisse(['user_id' => $caissier->id, 'jour' => now()->toDateString()]);
+        $fond->fill(['montant' => $montant])->save();
+        $veille = $this->laisseLaVeille($caissier);
+        JournalActivite::noter('caisse', ($avant === null ? 'Fond de caisse déclaré : ' : 'Fond de caisse corrigé : '.gnf($avant).' → ').gnf($montant)
+            .' ('.$caissier->nomComplet().($auteur->id !== $caissier->id ? ', par '.$auteur->nomComplet() : '').')'
+            .($veille !== null && $veille !== $montant ? ' — laissé la veille : '.gnf($veille) : ''));
+
+        return $fond;
+    }
+
     public function bilan(User $caissier, Carbon $jour): array
     {
         [$debut, $fin] = [$jour->copy()->startOfDay(), $jour->copy()->endOfDay()];
@@ -108,6 +146,7 @@ class CaisseService
             ->selectRaw('devise, SUM(montant_devise) as recu, SUM(contre_valeur) as contre')->groupBy('devise')->orderBy('devise')->get()
             ->mapWithKeys(fn ($d) => [$d->devise => ['attendu' => round((float) $d->recu, 2), 'contre_valeur' => (int) $d->contre]])->all();
         $contreValeur = array_sum(array_column($devises, 'contre_valeur'));
+        $fond = (int) $this->fond($caissier, $jour)?->montant;
 
         return [
             'nb_ventes' => (clone $ventes)->count(),
@@ -123,24 +162,29 @@ class CaisseService
             'tresorerie_especes' => $tresorerie,
             'sorties_especes' => $depenses + $fournisseurs - $tresorerie,
             'devises' => $devises,
-            'especes_theoriques' => ($net['especes'] ?? 0) - $contreValeur - $depenses - $fournisseurs + $tresorerie,
+            'fond' => $fond,
+            'fond_declare' => $this->fond($caissier, $jour) !== null,
+            'especes_theoriques' => $fond + ($net['especes'] ?? 0) - $contreValeur - $depenses - $fournisseurs + $tresorerie,
         ];
     }
 
     /** @param  array<int,int>|null  $billetage  comptage billet par billet (coupure => nombre) ; s'il est donné, il fait foi */
     /** @param  array<string,float>|null  $devisesComptees  billets en devises comptés (code => montant) */
-    public function cloturer(User $caissier, int $especesComptees, ?string $motif, ?string $note, User $auteur, ?array $billetage = null, ?array $devisesComptees = null): ClotureCaisse
+    public function cloturer(User $caissier, int $especesComptees, ?string $motif, ?string $note, User $auteur, ?array $billetage = null, ?array $devisesComptees = null, ?int $laisse = null): ClotureCaisse
     {
         [$billetage, $totalBillets] = ClotureCaisse::compterBillets($billetage ?? []);
         if ($billetage) {
             $especesComptees = $totalBillets;
         }
 
-        return DB::transaction(function () use ($caissier, $especesComptees, $motif, $note, $auteur, $billetage, $devisesComptees) {
+        return DB::transaction(function () use ($caissier, $especesComptees, $motif, $note, $auteur, $billetage, $devisesComptees, $laisse) {
             if ($this->estCloturee($caissier)) {
                 throw new OperationRefusee("La caisse de {$caissier->nomComplet()} est déjà clôturée aujourd'hui.");
             }
             $bilan = $this->bilan($caissier, now());
+            if ($laisse !== null && $laisse > $especesComptees) {
+                throw new OperationRefusee('Vous ne pouvez pas laisser dans le tiroir plus que les espèces comptées ('.gnf($especesComptees).').');
+            }
             $ecart = $especesComptees - $bilan['especes_theoriques'];
             if ($ecart !== 0 && ! trim((string) $motif)) {
                 throw new OperationRefusee('Écart de '.gnf(abs($ecart)).' ('.($ecart > 0 ? 'excédent' : 'manque').') : indiquez-en le motif avant de clôturer.');
@@ -159,7 +203,7 @@ class CaisseService
             $cloture = ClotureCaisse::create([
                 'user_id' => $caissier->id, 'jour' => now()->toDateString(),
                 'nb_ventes' => $bilan['nb_ventes'], 'total_ventes' => $bilan['total_ventes'], 'encaissements' => $bilan['net'],
-                'sorties_especes' => $bilan['sorties_especes'],
+                'sorties_especes' => $bilan['sorties_especes'], 'fond_caisse' => $bilan['fond'], 'laisse_en_caisse' => $laisse,
                 'especes_theoriques' => $bilan['especes_theoriques'], 'especes_comptees' => $especesComptees, 'billetage' => $billetage ?: null, 'devises' => $devises ?: null, 'ecart' => $ecart,
                 'motif_ecart' => $avecEcart ? trim($motif) : null, 'note' => $note, 'cloturee_par' => $auteur->id,
             ]);

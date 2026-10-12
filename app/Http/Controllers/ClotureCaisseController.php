@@ -49,11 +49,13 @@ class ClotureCaisseController extends Controller
 
     public function store(Request $request)
     {
-        $request->merge(['especes_comptees' => montant_saisi($request->especes_comptees)]);
+        $request->merge(['especes_comptees' => montant_saisi($request->especes_comptees),
+            'laisse_en_caisse' => $request->filled('laisse_en_caisse') ? montant_saisi($request->laisse_en_caisse) : null]);
         $d = $request->validate([
             'especes_comptees' => ['required', 'integer', 'min:0'],
             'billetage' => ['nullable', 'array'],
             'billetage.*' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'laisse_en_caisse' => ['nullable', 'integer', 'min:0'],
             'devises_comptees' => ['nullable', 'array'],
             'devises_comptees.*' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
             'motif' => ['nullable', 'string', 'max:150'],
@@ -61,9 +63,20 @@ class ClotureCaisseController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ], ['especes_comptees.required' => 'Indiquez le montant des espèces comptées dans le tiroir.']);
 
-        $cloture = $this->caisse->cloturer($request->user(), $d['especes_comptees'], choix_autre('motif'), $d['note'] ?? null, $request->user(), $d['billetage'] ?? null, $d['devises_comptees'] ?? null);
+        $cloture = $this->caisse->cloturer($request->user(), $d['especes_comptees'], choix_autre('motif'), $d['note'] ?? null, $request->user(), $d['billetage'] ?? null, $d['devises_comptees'] ?? null, $d['laisse_en_caisse'] ?? null);
 
         return redirect()->route('clotures.show', $cloture)->with('succes', 'Caisse clôturée : '.$cloture->libelleEcart().'.');
+    }
+
+    /** Fond de caisse du matin : la monnaie mise dans le tiroir avant la première vente. */
+    public function fond(Request $request)
+    {
+        $request->merge(['montant' => montant_saisi($request->montant)]);
+        $d = $request->validate(['montant' => ['required', 'integer', 'min:0', 'max:1000000000']],
+            ['montant.required' => 'Indiquez la monnaie mise dans le tiroir (0 s\'il est vide).']);
+        $fond = $this->caisse->declarerFond($request->user(), $d['montant'], $request->user());
+
+        return back()->with('succes', 'Fond de caisse : '.gnf($fond->montant).'. Il sera compté dans les espèces attendues à la clôture.');
     }
 
     public function show(Request $request, ClotureCaisse $cloture)

@@ -75,7 +75,9 @@ class Registre
     {
         return ['user_id' => $c->user_id, 'jour' => $c->jour->toDateString(), 'total_ventes' => (int) $c->total_ventes,
             'especes_theoriques' => (int) $c->especes_theoriques, 'especes_comptees' => (int) $c->especes_comptees, 'ecart' => (int) $c->ecart]
-            + ($c->devises ? ['devises' => self::devisesTriees($c->devises)] : []);
+            + ($c->devises ? ['devises' => self::devisesTriees($c->devises)] : [])
+            + ($c->fond_caisse ? ['fond_caisse' => (int) $c->fond_caisse] : [])
+            + ($c->laisse_en_caisse !== null ? ['laisse_en_caisse' => (int) $c->laisse_en_caisse] : []);
     }
 
     /** Ordre fixe des clés : MySQL réordonne les objets JSON, l'empreinte doit rester la même à la relecture. */

@@ -158,6 +158,7 @@ Route::middleware(['auth', 'boutique'])->group(function () {
     Route::middleware('can:ventes.creer')->group(function () {
         Route::get('/caisse/cloture', [ClotureCaisseController::class, 'create'])->name('clotures.create');
         Route::post('/caisse/cloture', [ClotureCaisseController::class, 'store'])->name('clotures.store');
+        Route::post('/caisse/fond', [ClotureCaisseController::class, 'fond'])->name('clotures.fond');
     });
     Route::middleware('can:ventes.voir')->group(function () {
         Route::get('/clotures', [ClotureCaisseController::class, 'index'])->name('clotures.index');

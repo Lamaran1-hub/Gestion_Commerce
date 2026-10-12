@@ -1,7 +1,9 @@
 @extends('layouts.app')
 @section('titre', 'Rapport Z du '.$c->jour->format('d/m/Y'))
 @section('contenu')
-    @php($modes = config('gestion.modes_paiement') + ['fidelite' => 'Points de fidélité'])
+    @php
+        $modes = config('gestion.modes_paiement') + ['fidelite' => 'Points de fidélité'];
+    @endphp
     <div class="entete-page no-print">
         <h1>Rapport Z — {{ $c->jour->format('d/m/Y') }}</h1>
         <div class="d-flex gap-2"><button onclick="window.print()" class="btn btn-outline-primary"><i class="bi bi-printer me-1"></i>Imprimer</button>
@@ -28,6 +30,15 @@
             <tfoot><tr class="fw-bold"><td>Total</td><td class="text-end montant">{{ gnf($c->totalEncaisse()) }}</td></tr></tfoot>
         </table>
         <hr>
+        @php
+            $laisseVeille = \App\Models\ClotureCaisse::where('user_id', $c->user_id)->whereDate('jour', '<', $c->jour->toDateString())->whereNotNull('laisse_en_caisse')->latest('jour')->value('laisse_en_caisse');
+        @endphp
+        @if ($c->fond_caisse || $laisseVeille)
+            <div class="d-flex justify-content-between" id="fondZ"><span>Fond de caisse du matin</span><span class="montant">+ {{ gnf($c->fond_caisse) }}</span></div>
+            @if ($laisseVeille !== null && $laisseVeille !== $c->fond_caisse)
+                <div class="small text-danger" id="fondDifferent"><i class="bi bi-exclamation-triangle"></i> Différent de ce qui a été laissé dans le tiroir la veille : {{ gnf($laisseVeille) }}</div>
+            @endif
+        @endif
         @if ($c->sorties_especes)<div class="d-flex justify-content-between"><span>{{ $c->sorties_especes > 0 ? 'Sorties' : 'Entrées' }} d'espèces hors ventes (dépenses, fournisseurs, transferts)</span><span class="montant">{{ $c->sorties_especes > 0 ? '−' : '+' }} {{ gnf(abs($c->sorties_especes)) }}</span></div>@endif
         <div class="d-flex justify-content-between"><span>Espèces attendues</span><span class="montant">{{ gnf($c->especes_theoriques) }}</span></div>
         <div class="d-flex justify-content-between"><span>Espèces comptées</span><span class="montant">{{ gnf($c->especes_comptees) }}</span></div>
@@ -42,6 +53,10 @@
             </table>
         @endif
         <div class="d-flex justify-content-between fw-bold fs-5 mt-1 {{ $c->ecart < 0 ? 'text-danger' : '' }}"><span>Écart</span><span>{{ $c->libelleEcart() }}</span></div>
+        @if ($c->laisse_en_caisse !== null)
+            <div class="d-flex justify-content-between small mt-1" id="laisseZ"><span>Laissé dans le tiroir pour demain</span><span class="montant">{{ gnf($c->laisse_en_caisse) }}</span></div>
+            <div class="d-flex justify-content-between small"><span>Espèces retirées (à mettre au coffre ou en banque)</span><span class="montant">{{ gnf($c->especes_comptees - $c->laisse_en_caisse) }}</span></div>
+        @endif
         @foreach ($c->devises ?? [] as $code => $d)
             <div class="d-flex justify-content-between small mt-1 {{ $d['compte'] != $d['attendu'] ? 'text-danger fw-semibold' : '' }}" data-devise="{{ $code }}">
                 <span>{{ config('gestion.devises.'.$code.'.0', $code) }} : attendu {{ devise($d['attendu'], $code) }}</span>

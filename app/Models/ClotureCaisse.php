@@ -14,13 +14,13 @@ class ClotureCaisse extends Model
     protected $table = 'clotures_caisse';
 
     protected $fillable = [
-        'boutique_id', 'user_id', 'jour', 'nb_ventes', 'total_ventes', 'encaissements', 'sorties_especes', 'especes_theoriques',
+        'boutique_id', 'user_id', 'jour', 'nb_ventes', 'total_ventes', 'encaissements', 'sorties_especes', 'fond_caisse', 'laisse_en_caisse', 'especes_theoriques',
         'especes_comptees', 'billetage', 'devises', 'ecart', 'motif_ecart', 'note', 'cloturee_par',
     ];
 
     protected $casts = [
         'jour' => 'date', 'encaissements' => 'array', 'nb_ventes' => 'integer', 'total_ventes' => 'integer',
-        'especes_theoriques' => 'integer', 'especes_comptees' => 'integer', 'ecart' => 'integer', 'sorties_especes' => 'integer',
+        'especes_theoriques' => 'integer', 'especes_comptees' => 'integer', 'ecart' => 'integer', 'sorties_especes' => 'integer', 'fond_caisse' => 'integer', 'laisse_en_caisse' => 'integer',
         'billetage' => 'array', 'devises' => 'array',
     ];
 

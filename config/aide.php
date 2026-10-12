@@ -241,13 +241,16 @@ return [
             'lien' => 'ventes.create', 'fonction' => 'hors_ligne', 'permission' => 'ventes.creer'],
 
         'cloture' => ['rubrique' => 'caisse', 'titre' => 'Clôturer la caisse le soir (rapport Z)',
-            'mots' => 'clôture fermeture caisse soir rapport z écart comptage billets fond',
+            'mots' => 'clôture fermeture caisse soir rapport z écart comptage billets fond de caisse monnaie matin coffre',
             'resume' => 'Comptez l\'argent, comparez au théorique, justifiez l\'écart.',
             'etapes' => [
+                'Le matin, avant la première vente : la caisse demande le fond de caisse (la monnaie dans le tiroir). Ce qui a été laissé la veille est proposé ; il s\'ajoute aux espèces attendues le soir.',
+                'Après le premier encaissement, seul l\'administrateur peut corriger le fond. Un fond différent de ce qui a été laissé la veille est signalé sur le rapport Z.',
                 'Clôtures de caisse → Nouvelle clôture.',
                 'Ouvrez « Compter billet par billet » : indiquez le nombre de billets de 20 000, 10 000, 5 000… GNF ; le total se calcule tout seul (ou saisissez directement le montant compté).',
                 'Le logiciel affiche l\'écart avec les espèces théoriques ; le détail des billets est imprimé sur le rapport Z.',
                 'Un écart doit être expliqué ; la clôture est ensuite signée dans le registre.',
+                'Indiquez ce que vous laissez dans le tiroir pour demain : le rapport Z donne le reste à mettre au coffre ou en banque.',
                 'Le rapport Z s\'imprime avec son empreinte d\'intégrité.',
             ],
             'lien' => 'clotures.index', 'permission' => 'ventes.voir'],

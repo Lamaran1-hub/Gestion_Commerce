@@ -10,6 +10,8 @@
                 <div class="bloc-entete"><h2 class="mb-0">Bilan de la journée</h2></div>
                 <div class="bloc-corps">
                     <div class="d-flex justify-content-between"><span class="text-doux">Ventes</span><strong>{{ $bilan['nb_ventes'] }} · {{ gnf($bilan['total_ventes']) }}</strong></div>
+                    <div class="d-flex justify-content-between mt-1" id="fondBilan"><span class="text-doux">Fond de caisse du matin</span>
+                        <span class="montant">{{ $bilan['fond_declare'] ? '+ '.gnf($bilan['fond']) : 'non déclaré (0)' }}</span></div>
                     <hr>
                     <table class="table table-sm mb-0">
                         <thead><tr><th>Mode</th><th class="text-end">Encaissé</th><th class="text-end d-none d-sm-table-cell">Remboursé</th><th class="text-end">Net</th></tr></thead>
@@ -80,6 +82,9 @@
                                 <span class="input-group-text">{{ config('gestion.devises.'.$code.'.1') }}</span></div></div>
                     @endforeach
                     <div class="col-12"><div class="alert mb-0 py-2 d-none" id="ecart" role="status"></div></div>
+                    <div class="col-12"><label class="form-label" for="laisse_en_caisse">Laissé dans le tiroir pour demain (GNF)</label>
+                        <input name="laisse_en_caisse" id="laisse_en_caisse" data-montant inputmode="numeric" value="{{ old('laisse_en_caisse') }}" class="form-control text-end" placeholder="facultatif">
+                        <div class="form-text">La monnaie gardée pour rendre la monnaie demain ; elle sera proposée comme fond de caisse. Le reste part au coffre ou en banque.</div></div>
                     <div class="col-12 d-none" id="blocMotif"><label class="form-label" for="motif">Motif de l'écart</label>
                         <select name="motif" id="motif" class="form-select" data-autre>
                             <option value="">Choisir…</option>

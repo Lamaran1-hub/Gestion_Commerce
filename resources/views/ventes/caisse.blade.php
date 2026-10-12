@@ -22,6 +22,22 @@
             <div>Votre caisse est <strong>clôturée pour aujourd'hui</strong> : les nouvelles ventes seront refusées.
                 Demandez à l'administrateur de la boutique de la rouvrir si nécessaire.</div></div>
     @endif
+    @php
+        $caisseSvc = app(\App\Services\CaisseService::class);
+    @endphp
+    @if (! $proforma && ! $caisseSvc->estCloturee(auth()->user()) && ! $caisseSvc->fond(auth()->user()))
+        {{-- Fond de caisse : à déclarer avant la première vente du jour --}}
+        <form method="post" action="{{ route('clotures.fond') }}" class="alert alert-light border d-flex flex-wrap align-items-center gap-2" id="fondCaisse" data-sans-confirmation>
+            @csrf
+            <i class="bi bi-cash-coin fs-5"></i>
+            <label for="fond_montant" class="flex-grow-1 mb-0"><strong>Fond de caisse</strong> : combien de monnaie dans le tiroir ce matin ?
+                @if (($veille = $caisseSvc->laisseLaVeille(auth()->user())) !== null)<span class="small text-doux">Laissé hier soir : {{ gnf($veille) }}.</span>@endif</label>
+            <div class="input-group" style="max-width:15rem">
+                <input name="montant" id="fond_montant" data-montant inputmode="numeric" class="form-control text-end" value="{{ old('montant', $veille ?? '') }}" placeholder="0" required>
+                <button class="btn btn-primary">Valider</button>
+            </div>
+        </form>
+    @endif
     <div class="caisse-grille">
         <section class="bloc">
             <div class="bloc-entete flex-wrap">
