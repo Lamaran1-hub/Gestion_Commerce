@@ -63,6 +63,16 @@
             </div>
         @endif
     @endcan
+    @can('depenses.gerer')
+        @if ($chargesAPayer->isNotEmpty())
+            <div class="alert {{ $chargesAPayer->contains('etat', 'retard') ? 'alert-warning' : 'alert-info' }} d-flex flex-wrap align-items-center gap-2" role="status">
+                <i class="bi bi-calendar2-check fs-5"></i>
+                <div class="flex-grow-1"><strong>{{ $chargesAPayer->count() }} charge(s) fixe(s) à payer</strong> ({{ gnf($chargesAPayer->sum(fn ($c) => $c['charge']->montant)) }}) :
+                    {{ $chargesAPayer->map(fn ($c) => $c['charge']->motif.($c['etat'] === 'retard' ? ' (en retard)' : ' le '.$c['echeance']->format('d/m')))->implode(', ') }}.</div>
+                <a href="{{ route('depenses.index') }}#charges" class="btn btn-sm {{ $chargesAPayer->contains('etat', 'retard') ? 'btn-warning' : 'btn-primary' }}">Payer</a>
+            </div>
+        @endif
+    @endcan
     <div class="entete-page">
         <h1>Tableau de bord</h1>
         <div class="btn-group" role="group" aria-label="Période">

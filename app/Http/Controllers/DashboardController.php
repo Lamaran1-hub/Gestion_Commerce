@@ -69,6 +69,8 @@ class DashboardController extends Controller
             'topProduits' => $this->topProduits($du, $au),
             'alertes' => Produit::where('actif', true)->enAlerte()->orderBy('stock')->limit(8)->get(),
             'nbAlertes' => Produit::where('actif', true)->enAlerte()->count(),
+            // Charges fixes en retard ou dues dans les 7 jours
+            'chargesAPayer' => $request->user()->aPermission('depenses.gerer') ? app(\App\Services\ChargesFixes::class)->aPayer() : collect(),
             'dernieresVentes' => Vente::with('client')->latest('date_vente')->limit(6)->get(),
             'parMode' => Paiement::whereBetween('date_paiement', [$du, $au])
                 ->whereHas('vente', fn ($q) => $q->where('statut', 'validee'))

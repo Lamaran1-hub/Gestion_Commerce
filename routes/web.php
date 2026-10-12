@@ -249,6 +249,7 @@ Route::middleware(['auth', 'boutique'])->group(function () {
 
     // Dépenses et rapports
     Route::resource('depenses', DepenseController::class)->except(['show', 'create'])->middleware('can:depenses.gerer');
+    Route::resource('charges-fixes', \App\Http\Controllers\ChargeFixeController::class)->only(['store', 'update', 'destroy'])->parameters(['charges-fixes' => 'charge'])->middleware('can:depenses.gerer');
     // Guide de démarrage du tableau de bord : masqué pour la session
     Route::post('/demarrage/masquer', function () {
         session(['demarrage_masque' => true]);

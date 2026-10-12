@@ -26,6 +26,9 @@ class DepenseController extends Controller
             'parCategorie' => (clone $requete)->selectRaw("COALESCE(categorie, 'Autre') as cat, SUM(montant) as total")->groupBy('cat')->orderByDesc('total')->pluck('total', 'cat'),
             'du' => $du, 'au' => $au,
             'depenseEdition' => $request->modifier ? Depense::find($request->modifier) : null,
+            // Charges fixes du mois : payées, à payer, en retard
+            'charges' => app(\App\Services\ChargesFixes::class)->suivi(),
+            'totalCharges' => app(\App\Services\ChargesFixes::class)->totalMensuel(),
             // Catégories prévues + catégories personnalisées saisies via « Autre »
             'categories' => collect(config('gestion.categories_depense'))
                 ->merge(Depense::whereNotNull('categorie')->distinct()->orderBy('categorie')->pluck('categorie'))->unique()->values(),
@@ -39,6 +42,14 @@ class DepenseController extends Controller
         // Une dépense en espèces sort du tiroir : la caisse de l'utilisateur doit être ouverte
         if ($donnees['mode'] === 'especes') {
             $caisse->verifierOuverte($request->user());
+        }
+        // Paiement d'une charge fixe : rattaché à la charge, jamais deux fois pour le même mois
+        if ($request->filled('charge_fixe_id')) {
+            $charge = \App\Models\ChargeFixe::findOrFail($request->integer('charge_fixe_id'));
+            if ($deja = app(\App\Services\ChargesFixes::class)->dejaPayee($charge, \Carbon\Carbon::parse($donnees['date_depense']))) {
+                throw new OperationRefusee("« {$charge->motif} » est déjà payée pour ce mois (le ".$deja->date_depense->format('d/m/Y').', '.gnf($deja->montant).').');
+            }
+            $donnees['charge_fixe_id'] = $charge->id;
         }
         $d = Depense::create($donnees + ['user_id' => auth()->id()]);
         JournalActivite::noter('depense', "Dépense « {$d->motif} » de ".gnf($d->montant));

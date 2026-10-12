@@ -10,7 +10,7 @@ class Depense extends Model
 {
     use AppartientABoutique;
 
-    protected $fillable = ['motif', 'categorie', 'montant', 'mode', 'date_depense', 'note', 'user_id'];
+    protected $fillable = ['motif', 'categorie', 'montant', 'mode', 'date_depense', 'note', 'user_id', 'charge_fixe_id'];
 
     protected $casts = ['date_depense' => 'date', 'montant' => 'integer'];
 

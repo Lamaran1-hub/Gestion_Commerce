@@ -464,6 +464,18 @@ return [
             ],
             'lien' => 'profil.edit'],
 
+        'charges-fixes' => ['rubrique' => 'argent', 'titre' => 'Charges fixes : loyer, électricité, salaires…',
+            'mots' => 'charge fixe loyer électricité edg eau salaire abonnement internet mensuel récurrent rappel échéance dépense',
+            'resume' => 'Déclarez une fois vos charges mensuelles : elles sont rappelées chaque mois et se paient en un clic.',
+            'etapes' => [
+                'Dépenses → « Charges fixes » → « Ajouter ou modifier une charge fixe » : motif, montant, jour du mois (1 à 28), catégorie, moyen de paiement.',
+                'Chaque mois, chaque charge apparaît avec son état : à venir, à payer bientôt (7 jours), en retard ou payée.',
+                '« Payer » enregistre la dépense du mois (montant modifiable, par exemple une facture d\'électricité qui varie). En espèces, elle sort de votre caisse du jour.',
+                'Une charge ne peut pas être payée deux fois le même mois. Le tableau de bord rappelle les charges en retard ou dues dans la semaine.',
+                '« Arrêter » une charge ne la rappelle plus ; ses paiements passés restent dans les dépenses et les rapports.',
+            ],
+            'lien' => 'depenses.index', 'permission' => 'depenses.gerer'],
+
         'integrite' => ['rubrique' => 'equipe', 'titre' => 'Registre anti-fraude et intégrité',
             'mots' => 'fraude sécurité registre intégrité empreinte modification suppression contrôle',
             'resume' => 'Chaque vente, annulation et clôture est signée : toute modification est détectée.',

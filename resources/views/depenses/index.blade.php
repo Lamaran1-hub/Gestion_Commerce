@@ -52,6 +52,65 @@
             @endif
         </div>
         <div class="col-lg-8">
+            {{-- Charges fixes du mois : loyer, électricité, salaires… rappelés et payés en un clic --}}
+            @php
+                $etats = ['payee' => ['payée', 'etat-ok'], 'retard' => ['en retard', 'etat-rupture'], 'bientot' => ['à payer bientôt', 'etat-alerte'], 'a_venir' => ['à venir', 'etat-neutre']];
+                $resteCharges = $charges->where('etat', '!=', 'payee')->sum(fn ($c) => $c['charge']->montant);
+                $moisCharges = now()->translatedFormat('F Y');
+                $deMois = (preg_match('/^[aeiouyéèâ]/iu', $moisCharges) ? "d'" : 'de ').$moisCharges;   // « d'octobre », « de mars »
+            @endphp
+            <div class="bloc mb-3" id="charges">
+                <div class="bloc-entete flex-wrap gap-1"><h2 class="mb-0"><i class="bi bi-calendar2-check me-1"></i>Charges fixes {{ $deMois }}</h2>
+                    @if ($charges->isNotEmpty())<span class="small text-doux">{{ gnf($totalCharges) }} par mois · reste à payer <strong class="{{ $resteCharges ? 'text-danger' : 'text-success' }}">{{ gnf($resteCharges) }}</strong></span>@endif</div>
+                @if ($charges->isNotEmpty())
+                    <div class="table-responsive"><table class="table mb-0 align-middle">
+                        <tbody>
+                        @foreach ($charges as $c)
+                            @php($ch = $c['charge'])
+                            <tr class="{{ $c['etat'] === 'retard' ? 'table-warning' : '' }}">
+                                <td><div class="fw-semibold">{{ $ch->motif }}</div>
+                                    <div class="small text-doux">le {{ $ch->jour }} du mois{{ $ch->categorie ? ' · '.$ch->categorie : '' }} · <span class="text-nowrap">{{ gnf($ch->montant) }}</span></div></td>
+                                <td class="text-nowrap"><span class="etat {{ $etats[$c['etat']][1] }}">{{ $etats[$c['etat']][0] }}</span>
+                                    <div class="small text-doux">@if ($c['paiement'])le {{ $c['paiement']->date_depense->format('d/m') }} · {{ gnf($c['paiement']->montant) }}
+                                        @elseif ($c['jours'] < 0)depuis le {{ $c['echeance']->format('d/m') }}@elseif ($c['jours'] === 0)aujourd'hui@else le {{ $c['echeance']->format('d/m') }}@endif</div></td>
+                                <td class="text-end d-none d-md-table-cell">@unless ($c['paiement'])@include('depenses._payer-charge', ['ch' => $ch])@endunless</td>
+                            </tr>
+                            @unless ($c['paiement'])<tr class="d-md-none {{ $c['etat'] === 'retard' ? 'table-warning' : '' }}"><td colspan="2" class="text-end border-top-0 pt-0">@include('depenses._payer-charge', ['ch' => $ch])</td></tr>@endunless
+                        @endforeach
+                        </tbody>
+                    </table></div>
+                @else
+                    <p class="bloc-corps small text-doux mb-0">Loyer, électricité, salaires, abonnements… Déclarez-les une fois : ils seront rappelés chaque mois ici, et sur le tableau de bord quand l'échéance approche.</p>
+                @endif
+                <details class="border-top" @if ($errors->has('jour')) open @endif>
+                    <summary class="bloc-corps py-2 small fw-semibold" style="cursor:pointer"><i class="bi bi-plus-lg me-1"></i>Ajouter ou modifier une charge fixe</summary>
+                    <div class="bloc-corps pt-0">
+                        <form method="post" action="{{ route('charges-fixes.store') }}" class="row g-2 align-items-end">@csrf
+                            <div class="col-sm-4"><label class="form-label small mb-1" for="cf_motif">Motif</label><input name="motif" id="cf_motif" class="form-control form-control-sm" required placeholder="Ex. : Loyer du magasin"></div>
+                            <div class="col-6 col-sm-2"><label class="form-label small mb-1" for="cf_montant">Montant</label><input name="montant" id="cf_montant" data-montant inputmode="numeric" class="form-control form-control-sm text-end" required></div>
+                            <div class="col-6 col-sm-2"><label class="form-label small mb-1" for="cf_jour">Le (jour)</label><input type="number" name="jour" id="cf_jour" min="1" max="28" value="{{ old('jour', 5) }}" class="form-control form-control-sm @error('jour') is-invalid @enderror" required></div>
+                            <div class="col-6 col-sm-2"><label class="form-label small mb-1" for="cf_categorie">Catégorie</label>
+                                <select name="categorie" id="cf_categorie" class="form-select form-select-sm"><option value="">Choisir…</option>@foreach ($prevues as $cat)<option>{{ $cat }}</option>@endforeach</select></div>
+                            <div class="col-6 col-sm-2"><label class="form-label small mb-1" for="cf_mode">Payée par</label>
+                                <select name="mode" id="cf_mode" class="form-select form-select-sm">@foreach (config('gestion.modes_paiement') as $k => $lib)<option value="{{ $k }}">{{ $lib }}</option>@endforeach</select></div>
+                            <div class="col-12"><button class="btn btn-sm btn-outline-primary">Ajouter la charge fixe</button></div>
+                            @error('jour')<div class="col-12 small text-danger">{{ $message }}</div>@enderror
+                        </form>
+                        @foreach ($charges as $c)
+                            @php($ch = $c['charge'])
+                            <form method="post" action="{{ route('charges-fixes.update', $ch) }}" class="row g-2 align-items-center border-top pt-2 mt-2">@csrf @method('put')
+                                <div class="col-sm-4"><input name="motif" value="{{ $ch->motif }}" class="form-control form-control-sm" aria-label="Motif" required></div>
+                                <div class="col-4 col-sm-2"><input name="montant" data-montant inputmode="numeric" value="{{ number_format($ch->montant, 0, ',', ' ') }}" class="form-control form-control-sm text-end" aria-label="Montant" required></div>
+                                <div class="col-3 col-sm-1"><input type="number" name="jour" min="1" max="28" value="{{ $ch->jour }}" class="form-control form-control-sm" aria-label="Jour du mois" required></div>
+                                <input type="hidden" name="categorie" value="{{ $ch->categorie }}"><input type="hidden" name="mode" value="{{ $ch->mode }}">
+                                <div class="col-5 col-sm-5 d-flex gap-1 justify-content-end"><button class="btn btn-sm btn-light">Enregistrer</button>
+                                    <button form="arreter-{{ $ch->id }}" class="btn btn-sm btn-light text-danger">Arrêter</button></div>
+                            </form>
+                            <form method="post" action="{{ route('charges-fixes.destroy', $ch) }}" id="arreter-{{ $ch->id }}" data-confirmer="Ne plus rappeler « {{ $ch->motif }} » ? Les paiements déjà faits restent dans les dépenses.">@csrf @method('delete')</form>
+                        @endforeach
+                    </div>
+                </details>
+            </div>
             <form class="bloc bloc-corps row g-2 align-items-end mb-3">
                 @include('partials.periode')
                 <div class="col-md"><label class="form-label small text-doux mb-1" for="fcat">Catégorie</label>
