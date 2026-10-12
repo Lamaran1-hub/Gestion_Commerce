@@ -73,6 +73,13 @@
             </div>
         @endif
     @endcan
+    @if ($aCompter)
+        <div class="alert alert-light border d-flex flex-wrap align-items-center gap-2" role="status">
+            <i class="bi bi-arrow-repeat fs-5"></i>
+            <div class="flex-grow-1"><strong>Comptage du jour :</strong> {{ $aCompter }} produit(s) à compter, quelques minutes suffisent pour garder un stock juste.</div>
+            <a href="{{ route('stock.inventaire', ['tournant' => 1]) }}" class="btn btn-sm btn-outline-primary">Compter</a>
+        </div>
+    @endif
     <div class="entete-page">
         <h1>Tableau de bord</h1>
         <div class="btn-group" role="group" aria-label="Période">

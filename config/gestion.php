@@ -95,6 +95,8 @@ return [
 
     // Marge (en % du prix de vente) sous laquelle un produit est signalé « marge faible »
     'marge_alerte_pct' => (float) env('MARGE_ALERTE_PCT', 10),
+    // Inventaire tournant : nombre de produits proposés à compter chaque jour
+    'comptage_par_jour' => (int) env('COMPTAGE_PAR_JOUR', 10),
     'motifs_ecart_caisse' => ['Erreur de rendu de monnaie', 'Vente non enregistrée', 'Paiement mobile saisi en espèces', 'Billet douteux', 'Autre'],
     'motifs_inventaire' => ['Inventaire périodique', 'Casse ou produit abîmé', 'Perte ou vol', 'Produit périmé', 'Erreur de saisie', 'Autre'],
 

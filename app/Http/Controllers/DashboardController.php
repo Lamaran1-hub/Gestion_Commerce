@@ -71,6 +71,9 @@ class DashboardController extends Controller
             'nbAlertes' => Produit::where('actif', true)->enAlerte()->count(),
             // Charges fixes en retard ou dues dans les 7 jours
             'chargesAPayer' => $request->user()->aPermission('depenses.gerer') ? app(\App\Services\ChargesFixes::class)->aPayer() : collect(),
+            // Inventaire tournant : rappel tant que personne n'a compté aujourd'hui
+            'aCompter' => $request->user()->aPermission('stock.ajuster') && ! Produit::where('compte_le', '>=', today())->exists()
+                ? app(\App\Services\InventaireTournant::class)->duJour()->count() : 0,
             'dernieresVentes' => Vente::with('client')->latest('date_vente')->limit(6)->get(),
             'parMode' => Paiement::whereBetween('date_paiement', [$du, $au])
                 ->whereHas('vente', fn ($q) => $q->where('statut', 'validee'))

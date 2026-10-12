@@ -69,6 +69,10 @@ class Produit extends Model
         'qte_conditionnement' => 'float',
         'prix_conditionnement' => 'integer',
         'stock' => 'float',
+        'compte_le' => 'datetime',
+        'compte_le' => 'datetime',
+        'compte_le' => 'datetime',
+        'compte_le' => 'datetime',
         'seuil_alerte' => 'float',
         'actif' => 'boolean',
     ];

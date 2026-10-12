@@ -300,12 +300,14 @@ return [
             'lien' => 'commandes-fournisseur.index', 'permission' => 'approvisionnements.gerer'],
 
         'inventaire' => ['rubrique' => 'stock', 'titre' => 'Faire un inventaire',
-            'mots' => 'inventaire comptage écart perte vol casse ajustement',
-            'resume' => 'Comptez le rayon, le logiciel corrige le stock et chiffre les écarts.',
+            'mots' => 'inventaire comptage écart perte vol casse ajustement tournant comptage du jour',
+            'resume' => 'Comptez le rayon, ou quelques produits par jour : le logiciel corrige le stock et chiffre les écarts.',
             'etapes' => [
                 'Stock → Inventaire, filtrez par catégorie pour compter rayon par rayon.',
+                'Sans fermer la boutique : « Compter les produits du jour » propose une dizaine de produits (jamais comptés d\'abord, puis les plus anciens comptages, les plus chers en premier). En un mois, tout le stock est vérifié ; la barre indique la part déjà vérifiée.',
                 'Saisissez les quantités comptées ; les écarts sont valorisés au prix d\'achat.',
-                'Validez : chaque correction est tracée dans les mouvements de stock.',
+                'La caisse peut continuer à vendre pendant le comptage : seul l\'écart constaté est corrigé, les ventes faites entre-temps ne sont pas effacées.',
+                'Validez : chaque correction est tracée dans les mouvements de stock, et la date du comptage est notée même quand le stock était juste.',
             ],
             'lien' => 'stock.inventaire', 'permission' => 'stock.ajuster'],
 

@@ -52,10 +52,15 @@ class StockService
         });
     }
 
-    /** Fixe le stock à la quantité comptée lors d'un inventaire. */
-    public function ajuster(Produit $produit, float $quantiteComptee, string $motif): ?MouvementStock
+    /**
+     * Fixe le stock d'après un comptage. Avec $stockAffiche (le stock montré quand le comptage a commencé),
+     * seul l'écart constaté est appliqué : une vente faite entre-temps à la caisse n'est pas effacée.
+     */
+    public function ajuster(Produit $produit, float $quantiteComptee, string $motif, ?float $stockAffiche = null): ?MouvementStock
     {
-        $ecart = round($quantiteComptee - $produit->fresh()->stock, 2);
+        $actuel = $produit->fresh()->stock;
+        // Jamais en dessous de zéro, même si la caisse a beaucoup vendu pendant le comptage
+        $ecart = max(round($quantiteComptee - ($stockAffiche ?? $actuel), 2), -max($actuel, 0));
 
         return $ecart == 0.0 ? null : $this->mouvement($produit, 'ajustement', $ecart, null, $motif);
     }
