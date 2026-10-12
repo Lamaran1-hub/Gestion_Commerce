@@ -13,10 +13,11 @@ class Boutique extends Model
 {
     protected $fillable = [
         'entreprise_id', 'derogations', 'nom', 'responsable_nom', 'responsable_telephone', 'secteur', 'notes_internes', 'slug', 'logo', 'telephone', 'email', 'adresse', 'ville', 'rccm', 'nif',
-        'tva_active', 'tva_taux', 'prix_ttc', 'remise_max_pct', 'vente_a_perte', 'plafond_credit_defaut', 'delai_credit_jours', 'delai_annulation_heures', 'delai_retour_jours', 'validite_devis_jours', 'couverture_stock_jours', 'alerte_peremption_jours', 'fidelite_taux', 'fidelite_minimum', 'vitrine_active', 'vitrine_stock_visible', 'vitrine_message', 'objectif_mensuel', 'cadeau_anniversaire', 'periode_verrouillee_jusquau', 'methode_cout', 'resume_quotidien', 'pied_facture', 'couleur', 'couleur_2', 'couleur_3', 'plan_id', 'abonnement_expire_le', 'statut',
+        'tva_active', 'tva_taux', 'prix_ttc', 'remise_max_pct', 'vente_a_perte', 'plafond_credit_defaut', 'delai_credit_jours', 'delai_annulation_heures', 'delai_retour_jours', 'validite_devis_jours', 'couverture_stock_jours', 'alerte_peremption_jours', 'fidelite_taux', 'fidelite_minimum', 'vitrine_active', 'vitrine_stock_visible', 'vitrine_message', 'objectif_mensuel', 'cadeau_anniversaire', 'periode_verrouillee_jusquau', 'methode_cout', 'resume_quotidien', 'pied_facture', 'taux_devises', 'couleur', 'couleur_2', 'couleur_3', 'plan_id', 'abonnement_expire_le', 'statut',
     ];
 
     protected $casts = [
+        'taux_devises' => 'array',
         'tva_active' => 'boolean',
         'vente_a_perte' => 'boolean',
         'resume_quotidien' => 'boolean',
@@ -44,6 +45,13 @@ class Boutique extends Model
                 $b->slug = $slug;
             }
         });
+    }
+
+    /** Devises acceptées en espèces : code => taux (GNF pour 1 unité), seulement celles qui ont un taux. */
+    public function tauxDevises(): array
+    {
+        return collect($this->taux_devises ?? [])->only(array_keys(config('gestion.devises')))
+            ->map(fn ($t) => (float) $t)->filter(fn ($t) => $t > 0)->all();
     }
 
     public function entreprise(): BelongsTo

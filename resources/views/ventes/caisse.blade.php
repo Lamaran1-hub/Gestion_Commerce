@@ -188,6 +188,20 @@
                         <label class="form-label small text-doux mb-1" for="montant_recu">Montant reçu</label>
                         <input name="montant_recu" id="montant_recu" data-montant value="{{ old('montant_recu') }}" class="form-control text-end" inputmode="numeric" placeholder="= total">
                     </div>
+                    @if ($tauxDevises = boutique()->tauxDevises())
+                        {{-- Espèces en devises : la caisse convertit au taux de la boutique, la monnaie se rend en GNF --}}
+                        <div class="col-12" id="blocDevise">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="bi bi-currency-exchange"></i></span>
+                                <select name="devise" id="devise" class="form-select" style="max-width:8.5rem" aria-label="Payé en devises">
+                                    <option value="">En GNF</option>
+                                    @foreach ($tauxDevises as $code => $t)<option value="{{ $code }}" data-taux="{{ $t }}" data-symbole="{{ config('gestion.devises.'.$code.'.1') }}" @selected(old('devise') === $code)>En {{ config('gestion.devises.'.$code.'.1') }} ({{ $code }})</option>@endforeach
+                                </select>
+                                <input name="montant_devise" id="montant_devise" value="{{ old('montant_devise') }}" class="form-control text-end" inputmode="decimal" placeholder="Billets reçus" aria-label="Montant reçu en devises" disabled>
+                            </div>
+                            <div class="small text-doux mt-1" id="conversionDevise"></div>
+                        </div>
+                    @endif
                     <div class="col-12 d-none" id="blocReference">
                         <input name="reference" id="reference" value="{{ old('reference') }}" class="form-control form-control-sm" placeholder="N° de transaction (conseillé)">
                     </div>
@@ -506,16 +520,16 @@
             <div class="ligne-ticket">
               <div class="fw-semibold">${echapper(l.produit.nom)}</div>
               <div class="text-end fw-semibold montant">${gnf(prixUnit(l) * l.quantite)}</div>
-              <div class="d-flex align-items-center gap-2">
+              <div class="d-flex flex-wrap align-items-center gap-2">
                 <span class="qte-ctrl">
                   <button type="button" data-action="moins" data-id="${l.produit.id}" aria-label="Moins">−</button>
                   <input value="${formatQte(l.quantite)}" data-id="${l.produit.id}" inputmode="decimal" aria-label="Quantité">
                   <button type="button" data-action="plus" data-id="${l.produit.id}" aria-label="Plus">+</button>
                 </span>
-                ${l.produit.cond ? `<select class="form-select form-select-sm py-0" style="width:auto" data-unite="${l.produit.id}" aria-label="Unité de vente">
+                ${l.produit.cond ? `<select class="form-select form-select-sm py-0" style="width:auto;max-width:10rem" data-unite="${l.produit.id}" aria-label="Unité de vente">
                     <option value="unite" ${l.cond ? '' : 'selected'}>${echapper(l.produit.unite)}</option>
                     <option value="cond" ${l.cond ? 'selected' : ''}>${echapper(l.produit.cond)} de ${formatQte(l.produit.qteCond)}</option></select>` : ''}
-                <small class="text-doux">× ${gnf(prixUnit(l))}</small>
+                <small class="text-doux text-nowrap">× ${gnf(prixUnit(l))}</small>
                 ${enPromo(l) ? '<span class="etat etat-rupture">promo</span>' : ''}
                 ${avecPrixConvenu(l) && !enPromo(l) ? '<span class="etat etat-ok">prix convenu</span>' : ''}
                 ${estGros(l) && !enPromo(l) && !avecPrixConvenu(l) ? '<span class="etat etat-ok">prix de gros</span>' : (!l.cond && l.produit.gros && l.produit.qteGros ? `<small class="text-doux">gros dès ${formatQte(l.produit.qteGros)}</small>` : '')}
@@ -673,7 +687,26 @@
     $('autresPaiements').addEventListener('click', e => {
         if (e.target.closest('.retirer-paiement')) { e.target.closest('.autre-paiement').remove(); rendre(); }
     });
-    $('mode').addEventListener('change', () => { $('blocReference').classList.toggle('d-none', $('mode').value === 'especes'); rendre(); });
+    // Espèces en devises : le montant reçu (GNF) est calculé au taux de la boutique
+    function convertirDevise() {
+        if (!$('devise')) return;
+        const opt = $('devise').selectedOptions[0], actif = $('mode').value === 'especes' && !!$('devise').value;
+        $('montant_devise').disabled = !actif;
+        $('montant_recu').readOnly = actif;
+        $('montant_recu').classList.toggle('bg-light', actif);
+        if (!actif) { $('conversionDevise').textContent = ''; return; }
+        const m = parseFloat($('montant_devise').value.replace(/\s/g, '').replace(',', '.')) || 0, taux = Number(opt.dataset.taux);
+        $('montant_recu').value = m > 0 ? Math.round(m * taux).toLocaleString('fr-FR') : '';
+        $('conversionDevise').textContent = `1 ${opt.dataset.symbole} = ${gnf(taux)}` + (m > 0 ? ` · ${m.toLocaleString('fr-FR')} ${opt.dataset.symbole} = ${gnf(Math.round(m * taux))} (monnaie rendue en GNF)` : '');
+    }
+    $('devise')?.addEventListener('change', () => { if (!$('devise').value) $('montant_recu').value = ''; convertirDevise(); rendre(); $('devise').value && $('montant_devise').focus(); });
+    $('montant_devise')?.addEventListener('input', () => { convertirDevise(); rendre(); });
+    $('mode').addEventListener('change', () => {
+        $('blocReference').classList.toggle('d-none', $('mode').value === 'especes');
+        $('blocDevise')?.classList.toggle('d-none', $('mode').value !== 'especes');
+        if ($('mode').value !== 'especes' && $('devise')?.value) { $('devise').value = ''; $('montant_recu').value = ''; }
+        convertirDevise(); rendre();
+    });
     $('mode').dispatchEvent(new Event('change'));
     // Connexion : indicateur, et vente gardée sur l'appareil si le serveur ne répond pas
     const majReseau = () => {
@@ -721,6 +754,7 @@
         if ($('carte_cadeau').value.trim()) return erreur('Les cartes cadeaux ne sont pas utilisables hors connexion.');
         if (!$('blocAvoir').classList.contains('d-none') && $('utiliser_avoir').checked) return erreur('L\'avoir du client n\'est pas utilisable hors connexion.');
         if ($('blocEchange')) return erreur('Un échange a besoin de la connexion : réessayez dès qu\'elle revient.');
+        if ($('devise')?.value) return erreur('Le paiement en devises a besoin de la connexion : encaissez en GNF ou réessayez dès qu\'elle revient.');
         const autres = [...document.querySelectorAll('.autre-paiement')].map(r => ({
             mode: r.querySelector('[data-champ=mode]').value, montant: nombre(r.querySelector('[data-champ=montant]').value),
             reference: r.querySelector('[data-champ=reference]').value || null })).filter(p => p.montant > 0);

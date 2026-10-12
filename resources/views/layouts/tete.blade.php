@@ -18,5 +18,5 @@
 <link href="{{ asset('vendor/public-sans/public-sans.css') }}" rel="stylesheet">
 <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
 <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
-<link href="{{ asset('css/app.css') }}?v=13" rel="stylesheet">
+<link href="{{ asset('css/app.css') }}?v=14" rel="stylesheet">
 @if ($marque)<style>:root { {{ $marque->variablesCss() }} }</style>@endif

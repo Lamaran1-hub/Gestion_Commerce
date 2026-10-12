@@ -92,6 +92,8 @@ return [
     'motifs_retour_fournisseur' => ['Produit défectueux', 'Produit périmé ou date trop courte', 'Erreur de livraison (mauvais produit)', 'Livré en trop', 'Colis abîmé', 'Autre'],
     // Billets et pièces en francs guinéens, pour compter le tiroir à la clôture (du plus gros au plus petit)
     'coupures' => [20000, 10000, 5000, 2000, 1000, 500, 100],
+    // Devises acceptées en espèces si la boutique leur donne un taux (Paramètres) : code => [nom, symbole]
+    'devises' => ['USD' => ['Dollar américain', '$'], 'EUR' => ['Euro', '€'], 'XOF' => ['Franc CFA', 'FCFA']],
 
     // Marge (en % du prix de vente) sous laquelle un produit est signalé « marge faible »
     'marge_alerte_pct' => (float) env('MARGE_ALERTE_PCT', 10),

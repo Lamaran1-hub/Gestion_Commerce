@@ -102,6 +102,13 @@ class CaisseService
         // Transferts de trésorerie touchant le tiroir (versement à la banque, dépôt Orange Money, apport…)
         $tresorerie = app(Tresorerie::class)->netEspecesCaissier($caissier, $debut, $fin);
 
+        // Espèces reçues en devises : ces billets sont dans le tiroir mais pas en GNF. Leur contre-valeur sort des GNF
+        // attendus (seule la monnaie rendue en GNF a quitté le tiroir) et ils se comptent à part, dans leur devise.
+        $devises = Paiement::where('user_id', $caissier->id)->whereNotNull('devise')->whereBetween('date_paiement', [$debut, $fin])
+            ->selectRaw('devise, SUM(montant_devise) as recu, SUM(contre_valeur) as contre')->groupBy('devise')->orderBy('devise')->get()
+            ->mapWithKeys(fn ($d) => [$d->devise => ['attendu' => round((float) $d->recu, 2), 'contre_valeur' => (int) $d->contre]])->all();
+        $contreValeur = array_sum(array_column($devises, 'contre_valeur'));
+
         return [
             'nb_ventes' => (clone $ventes)->count(),
             'total_ventes' => (int) (clone $ventes)->sum('total_ttc'),
@@ -115,19 +122,21 @@ class CaisseService
             'fournisseurs_rembourses_especes' => -(int) PaiementFournisseur::where('user_id', $caissier->id)->where('mode', 'especes')->where('montant', '<', 0)->whereBetween('date_paiement', [$debut, $fin])->sum('montant'),
             'tresorerie_especes' => $tresorerie,
             'sorties_especes' => $depenses + $fournisseurs - $tresorerie,
-            'especes_theoriques' => ($net['especes'] ?? 0) - $depenses - $fournisseurs + $tresorerie,
+            'devises' => $devises,
+            'especes_theoriques' => ($net['especes'] ?? 0) - $contreValeur - $depenses - $fournisseurs + $tresorerie,
         ];
     }
 
     /** @param  array<int,int>|null  $billetage  comptage billet par billet (coupure => nombre) ; s'il est donné, il fait foi */
-    public function cloturer(User $caissier, int $especesComptees, ?string $motif, ?string $note, User $auteur, ?array $billetage = null): ClotureCaisse
+    /** @param  array<string,float>|null  $devisesComptees  billets en devises comptés (code => montant) */
+    public function cloturer(User $caissier, int $especesComptees, ?string $motif, ?string $note, User $auteur, ?array $billetage = null, ?array $devisesComptees = null): ClotureCaisse
     {
         [$billetage, $totalBillets] = ClotureCaisse::compterBillets($billetage ?? []);
         if ($billetage) {
             $especesComptees = $totalBillets;
         }
 
-        return DB::transaction(function () use ($caissier, $especesComptees, $motif, $note, $auteur, $billetage) {
+        return DB::transaction(function () use ($caissier, $especesComptees, $motif, $note, $auteur, $billetage, $devisesComptees) {
             if ($this->estCloturee($caissier)) {
                 throw new OperationRefusee("La caisse de {$caissier->nomComplet()} est déjà clôturée aujourd'hui.");
             }
@@ -136,13 +145,23 @@ class CaisseService
             if ($ecart !== 0 && ! trim((string) $motif)) {
                 throw new OperationRefusee('Écart de '.gnf(abs($ecart)).' ('.($ecart > 0 ? 'excédent' : 'manque').') : indiquez-en le motif avant de clôturer.');
             }
+            $devises = [];
+            foreach ($bilan['devises'] as $code => $d) {
+                $compte = round((float) ($devisesComptees[$code] ?? 0), 2);
+                $devises[$code] = ['attendu' => $d['attendu'], 'compte' => $compte];
+                if ($compte != $d['attendu'] && ! trim((string) $motif)) {
+                    throw new OperationRefusee('Écart sur les '.config('gestion.devises.'.$code.'.0').' : '.devise($d['attendu'], $code).' attendus, '
+                        .devise($compte, $code).' comptés. Indiquez-en le motif avant de clôturer.');
+                }
+            }
+            $avecEcart = $ecart !== 0 || collect($devises)->contains(fn ($d) => $d['compte'] != $d['attendu']);
 
             $cloture = ClotureCaisse::create([
                 'user_id' => $caissier->id, 'jour' => now()->toDateString(),
                 'nb_ventes' => $bilan['nb_ventes'], 'total_ventes' => $bilan['total_ventes'], 'encaissements' => $bilan['net'],
                 'sorties_especes' => $bilan['sorties_especes'],
-                'especes_theoriques' => $bilan['especes_theoriques'], 'especes_comptees' => $especesComptees, 'billetage' => $billetage ?: null, 'ecart' => $ecart,
-                'motif_ecart' => $ecart !== 0 ? trim($motif) : null, 'note' => $note, 'cloturee_par' => $auteur->id,
+                'especes_theoriques' => $bilan['especes_theoriques'], 'especes_comptees' => $especesComptees, 'billetage' => $billetage ?: null, 'devises' => $devises ?: null, 'ecart' => $ecart,
+                'motif_ecart' => $avecEcart ? trim($motif) : null, 'note' => $note, 'cloturee_par' => $auteur->id,
             ]);
             // Rapport Z signé dans le registre inaltérable ; son empreinte est imprimée sur le rapport
             $cloture->forceFill(['empreinte' => app(Registre::class)->inscrire($cloture->boutique_id, 'cloture', $cloture->id, Registre::donneesCloture($cloture))])->saveQuietly();

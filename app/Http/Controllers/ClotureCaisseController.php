@@ -54,12 +54,14 @@ class ClotureCaisseController extends Controller
             'especes_comptees' => ['required', 'integer', 'min:0'],
             'billetage' => ['nullable', 'array'],
             'billetage.*' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'devises_comptees' => ['nullable', 'array'],
+            'devises_comptees.*' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
             'motif' => ['nullable', 'string', 'max:150'],
             'motif_autre' => ['nullable', 'string', 'max:150'],
             'note' => ['nullable', 'string', 'max:500'],
         ], ['especes_comptees.required' => 'Indiquez le montant des espèces comptées dans le tiroir.']);
 
-        $cloture = $this->caisse->cloturer($request->user(), $d['especes_comptees'], choix_autre('motif'), $d['note'] ?? null, $request->user(), $d['billetage'] ?? null);
+        $cloture = $this->caisse->cloturer($request->user(), $d['especes_comptees'], choix_autre('motif'), $d['note'] ?? null, $request->user(), $d['billetage'] ?? null, $d['devises_comptees'] ?? null);
 
         return redirect()->route('clotures.show', $cloture)->with('succes', 'Caisse clôturée : '.$cloture->libelleEcart().'.');
     }

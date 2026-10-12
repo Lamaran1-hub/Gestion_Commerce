@@ -10,9 +10,9 @@ class Paiement extends Model
 {
     use AppartientABoutique;
 
-    protected $fillable = ['vente_id', 'client_id', 'montant', 'mode', 'reference', 'date_paiement', 'user_id'];
+    protected $fillable = ['vente_id', 'client_id', 'montant', 'mode', 'devise', 'montant_devise', 'taux_devise', 'contre_valeur', 'reference', 'date_paiement', 'user_id'];
 
-    protected $casts = ['date_paiement' => 'datetime', 'montant' => 'integer'];
+    protected $casts = ['date_paiement' => 'datetime', 'montant' => 'integer', 'montant_devise' => 'float', 'taux_devise' => 'float', 'contre_valeur' => 'integer'];
 
     protected static function booted(): void
     {
@@ -41,5 +41,17 @@ class Paiement extends Model
     public function libelleMode(): string
     {
         return libelle_mode($this->mode);
+    }
+
+    /** « Reçu 100 $ (1 $ = 8 600 GNF) · rendu 15 000 GNF » pour des espèces en devises, sinon null. */
+    public function detailDevise(): ?string
+    {
+        if (! $this->devise) {
+            return null;
+        }
+        $rendu = (int) $this->contre_valeur - (int) $this->montant;
+
+        return 'Reçu '.devise($this->montant_devise, $this->devise).' (1 '.config('gestion.devises.'.$this->devise.'.1', $this->devise).' = '.gnf($this->taux_devise).')'
+            .($rendu > 0 ? ' · rendu '.gnf($rendu) : '');
     }
 }

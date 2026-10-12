@@ -153,7 +153,8 @@
                 <div class="bloc-corps">
                     @forelse ($vente->paiements as $p)
                         <div class="d-flex justify-content-between py-2 border-bottom">
-                            <div>{{ $p->libelleMode() }}<div class="small text-doux">{{ $p->date_paiement->format('d/m/Y H:i') }}{{ $p->reference ? ' · '.$p->reference : '' }}</div></div>
+                            <div>{{ $p->libelleMode() }}<div class="small text-doux">{{ $p->date_paiement->format('d/m/Y H:i') }}{{ $p->reference ? ' · '.$p->reference : '' }}</div>
+                                @if ($p->devise)<div class="small text-doux"><i class="bi bi-currency-exchange"></i> {{ $p->detailDevise() }}</div>@endif</div>
                             <strong class="montant">{{ gnf($p->montant) }}</strong>
                         </div>
                     @empty

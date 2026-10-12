@@ -56,6 +56,8 @@ class ParametreController extends Controller
             'vitrine_message' => ['nullable', 'string', 'max:300'],
             'objectif_mensuel' => ['nullable', 'integer', 'min:0'],
             'cadeau_anniversaire' => ['nullable', 'string', 'max:200'],
+            'taux_devises' => ['nullable', 'array'],
+            'taux_devises.*' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
         ]);
         // Clôturer ou rouvrir une période comptable est réservé à l'administrateur de la boutique
         $verrouActuel = $boutique->periode_verrouillee_jusquau?->toDateString();
@@ -98,6 +100,16 @@ class ParametreController extends Controller
             $d['objectif_mensuel'] = null;   // 0 = pas d'objectif
         }
         $d['methode_cout'] = $d['methode_cout'] ?? 'dernier';
+        if ($request->has('taux_devises')) {
+            $taux = collect($d['taux_devises'] ?? [])->only(array_keys(config('gestion.devises')))
+                ->filter(fn ($t) => (float) $t > 0)->map(fn ($t) => round((float) $t, 4))->all();
+            if ($taux != $boutique->tauxDevises()) {
+                JournalActivite::noter('parametres', $taux ? 'Taux des devises : '.collect($taux)->map(fn ($t, $c) => "1 {$c} = ".gnf($t))->implode(', ') : 'Devises étrangères refusées en caisse');
+            }
+            $d['taux_devises'] = $taux ?: null;
+        } else {
+            unset($d['taux_devises']);
+        }
         // Couleurs secondaires facultatives : une couleur retirée libère sa place
         $autres = array_values(array_filter([$d['couleur_2'] ?? null, $d['couleur_3'] ?? null]));
         $d['couleur_2'] = $autres[0] ?? null;

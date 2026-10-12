@@ -129,13 +129,20 @@ class VenteController extends Controller
             'paiements_autres.*.mode' => ['required_with:paiements_autres.*.montant', Rule::in(array_keys(config('gestion.modes_paiement')))],
             'paiements_autres.*.montant' => ['nullable'],
             'paiements_autres.*.reference' => ['nullable', 'string', 'max:100'],
-        ], ['lignes.required' => 'Ajoutez au moins un produit à la vente.']);
+            'devise' => ['nullable', Rule::in(array_keys(boutique()->tauxDevises()))],
+            'montant_devise' => ['nullable', 'required_with:devise', 'numeric', 'min:0.01', 'max:100000000'],
+        ], ['lignes.required' => 'Ajoutez au moins un produit à la vente.', 'devise.in' => 'Cette devise n\'est pas acceptée : indiquez son taux dans les paramètres.',
+            'montant_devise.required_with' => 'Indiquez le montant reçu en devises.']);
         $d['paiements_autres'] = array_map(fn ($p) => ['montant' => montant_saisi($p['montant'] ?? 0)] + $p, $d['paiements_autres'] ?? []);
 
         $d['reference'] = reference_paiement();
         $peutRemise = $request->user()->aPermission('ventes.remise');
         $d['remise'] = $peutRemise ? montant_saisi($d['remise'] ?? 0) : 0;
         $d['montant_recu'] = isset($d['montant_recu']) && $d['montant_recu'] !== '' ? montant_saisi($d['montant_recu']) : null;
+        $d['devise'] = $this->especesEnDevise($d);
+        if ($d['devise']) {
+            $d['montant_recu'] = $d['devise']['contre_valeur'];   // le taux vient de la boutique, jamais du navigateur
+        }
         $d['lignes'] = array_map(fn ($l) => array_merge($l, isset($l['prix_unitaire']) ? ['prix_unitaire' => montant_saisi($l['prix_unitaire'])] : []), $d['lignes']);
 
         $vente = $this->service->creer($d, $peutRemise);
@@ -147,9 +154,29 @@ class VenteController extends Controller
         $resteRendu = $bon ? (int) -\App\Models\Paiement::where('vente_id', $bon->vente_id)->where('mode', 'especes')
             ->where('reference', "Reste du bon {$bon->numero} (échange {$vente->numero})")->sum('montant') : 0;
 
+        // Payé en devises : la monnaie se rend en francs guinéens
+        $enDevise = $d['devise'] ? $vente->paiements->firstWhere('devise', $d['devise']['devise']) : null;
+        $monnaie = $enDevise ? $enDevise->contre_valeur - $enDevise->montant : 0;
+
         return redirect()->route('ventes.show', ['vente' => $vente, 'imprimer' => 1])
             ->with('succes', "Vente {$vente->numero} enregistrée.".($bon ? " Échange {$bon->numero} effectué." : '')
+                .($enDevise ? ' Reçu '.devise($enDevise->montant_devise, $enDevise->devise).($monnaie > 0 ? ' : rendez '.gnf($monnaie).' au client.' : '.') : '')
                 .($resteRendu > 0 ? ' Rendez '.gnf($resteRendu).' au client (reste du bon d\'échange).' : ''));
+    }
+
+    /** Espèces reçues en dollars, euros… : contre-valeur en GNF au taux fixé par la boutique. */
+    private function especesEnDevise(array $d): ?array
+    {
+        if (empty($d['devise'])) {
+            return null;
+        }
+        if ($d['mode'] !== 'especes') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['devise' => 'Les devises se reçoivent en espèces : choisissez « Espèces ».']);
+        }
+        $taux = boutique()->tauxDevises()[$d['devise']];
+        $montant = round((float) $d['montant_devise'], 2);
+
+        return ['devise' => $d['devise'], 'montant_devise' => $montant, 'taux_devise' => $taux, 'contre_valeur' => (int) round($montant * $taux)];
     }
 
     /**

@@ -181,7 +181,7 @@ class VenteService
                 $this->enregistrerPaiement($vente, $p['montant'], $p['mode'], $p['reference'], $date);
             }
             if ($paye > 0) {
-                $this->enregistrerPaiement($vente, $paye, $donnees['mode'] ?? 'especes', $donnees['reference'] ?? null, $date);
+                $this->enregistrerPaiement($vente, $paye, $donnees['mode'] ?? 'especes', $donnees['reference'] ?? null, $date, $donnees['devise'] ?? null);
             }
 
             JournalActivite::noter('vente', "Vente {$vente->numero} de ".gnf($ttc));
@@ -443,9 +443,10 @@ class VenteService
         return $vente;
     }
 
-    private function enregistrerPaiement(Vente $vente, int $montant, string $mode, ?string $reference, ?\DateTimeInterface $date = null): Paiement
+    /** @param  array{devise:string, montant_devise:float, taux_devise:float, contre_valeur:int}|null  $devise  espèces reçues en devises */
+    private function enregistrerPaiement(Vente $vente, int $montant, string $mode, ?string $reference, ?\DateTimeInterface $date = null, ?array $devise = null): Paiement
     {
-        $paiement = Paiement::create([
+        $paiement = Paiement::create(($mode === 'especes' && $devise ? $devise : []) + [
             'vente_id' => $vente->id,
             'client_id' => $vente->client_id,
             'montant' => $montant,

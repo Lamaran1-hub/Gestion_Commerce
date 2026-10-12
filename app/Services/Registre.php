@@ -62,7 +62,8 @@ class Registre
     public static function donneesPaiement(Paiement $p): array
     {
         return ['vente_id' => $p->vente_id, 'montant' => (int) $p->montant, 'mode' => $p->mode,
-            'date' => $p->date_paiement->format('Y-m-d H:i:s'), 'user_id' => $p->user_id];
+            'date' => $p->date_paiement->format('Y-m-d H:i:s'), 'user_id' => $p->user_id]
+            + ($p->devise ? ['devise' => $p->devise, 'montant_devise' => number_format((float) $p->montant_devise, 2, '.', ''), 'contre_valeur' => (int) $p->contre_valeur] : []);
     }
 
     public static function donneesRetour(Retour $r): array
@@ -73,7 +74,16 @@ class Registre
     public static function donneesCloture(ClotureCaisse $c): array
     {
         return ['user_id' => $c->user_id, 'jour' => $c->jour->toDateString(), 'total_ventes' => (int) $c->total_ventes,
-            'especes_theoriques' => (int) $c->especes_theoriques, 'especes_comptees' => (int) $c->especes_comptees, 'ecart' => (int) $c->ecart];
+            'especes_theoriques' => (int) $c->especes_theoriques, 'especes_comptees' => (int) $c->especes_comptees, 'ecart' => (int) $c->ecart]
+            + ($c->devises ? ['devises' => self::devisesTriees($c->devises)] : []);
+    }
+
+    /** Ordre fixe des clés : MySQL réordonne les objets JSON, l'empreinte doit rester la même à la relecture. */
+    private static function devisesTriees(array $devises): array
+    {
+        ksort($devises);
+
+        return array_map(fn ($d) => ['attendu' => (float) ($d['attendu'] ?? 0), 'compte' => (float) ($d['compte'] ?? 0)], $devises);
     }
 
     /**

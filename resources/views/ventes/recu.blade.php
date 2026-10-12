@@ -50,7 +50,9 @@
             @endforeach
         @endif
         <tr class="b" style="font-size:14px"><td>TOTAL</td><td class="r">{{ gnf($vente->total_ttc) }}</td></tr>
-        @foreach ($vente->paiements as $p)<tr><td>{{ $p->libelleMode() }}</td><td class="r">{{ gnf($p->montant, false) }}</td></tr>@endforeach
+        @foreach ($vente->paiements as $p)<tr><td>{{ $p->libelleMode() }}</td><td class="r">{{ gnf($p->montant, false) }}</td></tr>
+            @if ($p->devise)<tr><td colspan="2" class="small">{{ $p->detailDevise() }}</td></tr>@endif
+        @endforeach
         @if ($vente->resteAPayer())<tr class="b"><td>Reste à payer</td><td class="r">{{ gnf($vente->resteAPayer()) }}</td></tr>
             @if ($vente->echeance)<tr><td>À payer avant le</td><td class="r">{{ $vente->echeance->format('d/m/Y') }}</td></tr>@endif
         @endif

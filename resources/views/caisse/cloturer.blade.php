@@ -32,6 +32,10 @@
                             @if ($bilan['tresorerie_especes'])<div class="d-flex justify-content-between"><span class="text-doux">Transferts de trésorerie (banque, mobile money, apports)</span><span class="montant">{{ $bilan['tresorerie_especes'] > 0 ? '+' : '−' }} {{ gnf(abs($bilan['tresorerie_especes'])) }}</span></div>@endif
                         </div>
                     @endif
+                    @foreach ($bilan['devises'] as $code => $d)
+                        <div class="d-flex justify-content-between small mt-1"><span class="text-doux">Dont reçu en {{ config('gestion.devises.'.$code.'.0') }} : {{ devise($d['attendu'], $code) }} (compté à part)</span>
+                            <span class="montant text-nowrap">− {{ gnf($d['contre_valeur']) }}</span></div>
+                    @endforeach
                     <div class="small text-doux mt-2">Seules les espèces se comptent dans le tiroir ; les paiements mobiles et cartes sont vérifiés sur les relevés des opérateurs.</div>
                 </div>
             </div>
@@ -68,6 +72,13 @@
                     </div>
                     <div class="col-12"><label class="form-label" for="especes_comptees">Espèces comptées (GNF)</label>
                         <input name="especes_comptees" id="especes_comptees" data-montant inputmode="numeric" value="{{ old('especes_comptees') }}" class="form-control form-control-lg text-end" required autofocus></div>
+                    @foreach ($bilan['devises'] as $code => $d)
+                        <div class="col-12"><label class="form-label" for="devise_{{ $code }}">{{ config('gestion.devises.'.$code.'.0') }} comptés
+                            <span class="text-doux small">(attendus : {{ devise($d['attendu'], $code) }})</span></label>
+                            <div class="input-group"><input type="number" step="0.01" min="0" inputmode="decimal" name="devises_comptees[{{ $code }}]" id="devise_{{ $code }}"
+                                value="{{ old('devises_comptees.'.$code) }}" class="form-control text-end devise-comptee" data-attendu="{{ $d['attendu'] }}" data-nom="{{ config('gestion.devises.'.$code.'.0') }}" required>
+                                <span class="input-group-text">{{ config('gestion.devises.'.$code.'.1') }}</span></div></div>
+                    @endforeach
                     <div class="col-12"><div class="alert mb-0 py-2 d-none" id="ecart" role="status"></div></div>
                     <div class="col-12 d-none" id="blocMotif"><label class="form-label" for="motif">Motif de l'écart</label>
                         <select name="motif" id="motif" class="form-select" data-autre>
@@ -102,16 +113,22 @@
     (() => {
         const saisie = document.getElementById('especes_comptees'), theorique = Number(document.getElementById('theorique').dataset.valeur),
             boite = document.getElementById('ecart'), blocMotif = document.getElementById('blocMotif'), motif = document.getElementById('motif');
+        const devises = [...document.querySelectorAll('.devise-comptee')];
         const maj = () => {
             if (saisie.value === '') { boite.classList.add('d-none'); blocMotif.classList.add('d-none'); motif.required = false; return; }
             const ecart = nombre(saisie.value) - theorique;
+            // Devises : un écart se signale aussi, dans sa devise
+            const ecartsDevises = devises.filter(d => d.value !== '' && Math.round((parseFloat(d.value) - Number(d.dataset.attendu)) * 100) !== 0)
+                .map(d => `${d.dataset.nom} : ${(Math.round((parseFloat(d.value) - Number(d.dataset.attendu)) * 100) / 100).toLocaleString('fr-FR')}`);
+            const juste = ecart === 0 && !ecartsDevises.length;
             boite.classList.remove('d-none', 'alert-success', 'alert-warning', 'alert-danger');
-            boite.classList.add(ecart === 0 ? 'alert-success' : (ecart > 0 ? 'alert-warning' : 'alert-danger'));
-            boite.textContent = ecart === 0 ? 'Caisse juste.' : (ecart > 0 ? 'Excédent de ' + gnf(ecart) : 'Manque de ' + gnf(-ecart));
-            blocMotif.classList.toggle('d-none', ecart === 0);
-            motif.required = ecart !== 0;
+            boite.classList.add(juste ? 'alert-success' : (ecart > 0 || (ecart === 0 && ecartsDevises.length) ? 'alert-warning' : 'alert-danger'));
+            boite.textContent = (ecart === 0 ? (juste ? 'Caisse juste.' : 'GNF justes.') : (ecart > 0 ? 'Excédent de ' + gnf(ecart) : 'Manque de ' + gnf(-ecart)))
+                + (ecartsDevises.length ? ' Écart en devises — ' + ecartsDevises.join(', ') : '');
+            blocMotif.classList.toggle('d-none', juste);
+            motif.required = !juste;
         };
-        saisie.addEventListener('input', maj); maj();
+        saisie.addEventListener('input', maj); devises.forEach(d => d.addEventListener('input', maj)); maj();
 
         // Billetage : chaque nombre de billets met à jour son montant, le total et les espèces comptées
         const billets = [...document.querySelectorAll('.billet')];

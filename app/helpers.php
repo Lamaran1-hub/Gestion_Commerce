@@ -13,6 +13,17 @@ if (! function_exists('gnf')) {
     }
 }
 
+if (! function_exists('devise')) {
+    /** Montant en devise étrangère : « 100 $ », « 50,50 € », « 10 000 FCFA ». */
+    function devise(int|float|string|null $montant, string $code): string
+    {
+        $m = (float) $montant;
+        $symbole = config('gestion.devises.'.$code.'.1', $code);
+
+        return number_format($m, fmod($m, 1) == 0.0 ? 0 : 2, ',', ' ').' '.$symbole;
+    }
+}
+
 if (! function_exists('qte')) {
     /** Affiche une quantité sans décimales inutiles : 12 ou 2,5 */
     function qte(int|float|string|null $valeur): string

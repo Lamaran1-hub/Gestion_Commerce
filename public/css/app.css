@@ -112,7 +112,7 @@ h2, .h2 { font-size: 1.125rem; font-weight: 700; }
   .ticket-total .valeur { font-size: clamp(1.25rem, 6.5vw, 1.6rem); }
   .ticket-total .btn-lg { padding: .45rem .8rem; font-size: 1rem; flex-shrink: 0; }
 }
-.ligne-ticket { display: grid; grid-template-columns: 1fr auto; gap: .25rem .5rem; padding: .6rem 0; border-bottom: 1px dashed var(--ligne); }
+.ligne-ticket { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem .5rem; padding: .6rem 0; border-bottom: 1px dashed var(--ligne); }
 .qte-ctrl { display: inline-flex; align-items: center; border: 1px solid var(--ligne); border-radius: 8px; }
 .qte-ctrl button { border: 0; background: none; width: 30px; height: 30px; }
 .qte-ctrl input { width: 58px; border: 0; text-align: center; height: 30px; }

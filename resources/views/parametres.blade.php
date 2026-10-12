@@ -203,6 +203,17 @@
                         <label for="resume_quotidien" class="form-check-label">Recevoir chaque matin le résumé de la veille (ventes, caisses, stock bas, crédits en retard)</label></div></div>
                 </div>
             </div>
+            <div class="bloc mt-4" id="devises">
+                <div class="bloc-entete"><h2 class="mb-0"><i class="bi bi-currency-exchange me-1"></i>Espèces en devises</h2></div>
+                <div class="bloc-corps row g-3">
+                    <p class="col-12 small text-doux mb-0">Un client paie en dollars ou en euros ? Indiquez combien vous comptez 1 unité en francs guinéens : la caisse convertit et vous rendez la monnaie en GNF. Laissez vide une devise que vous n'acceptez pas. Mettez le taux à jour quand il change.</p>
+                    @foreach (config('gestion.devises') as $code => [$nomDevise, $symbole])
+                        <div class="col-sm-4"><label class="form-label" for="taux_{{ $code }}">1 {{ $nomDevise }} ({{ $symbole }}) =</label>
+                            <div class="input-group"><input type="number" step="0.01" min="0" name="taux_devises[{{ $code }}]" id="taux_{{ $code }}" class="form-control text-end"
+                                value="{{ old('taux_devises.'.$code, $boutique->tauxDevises()[$code] ?? '') }}" placeholder="non acceptée"><span class="input-group-text">GNF</span></div></div>
+                    @endforeach
+                </div>
+            </div>
             @if (fonction('vitrine'))
                 @php
                     $lienVitrine = route('vitrine.index', $boutique->slug);

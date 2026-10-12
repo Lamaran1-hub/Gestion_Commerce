@@ -42,6 +42,11 @@
             </table>
         @endif
         <div class="d-flex justify-content-between fw-bold fs-5 mt-1 {{ $c->ecart < 0 ? 'text-danger' : '' }}"><span>Écart</span><span>{{ $c->libelleEcart() }}</span></div>
+        @foreach ($c->devises ?? [] as $code => $d)
+            <div class="d-flex justify-content-between small mt-1 {{ $d['compte'] != $d['attendu'] ? 'text-danger fw-semibold' : '' }}" data-devise="{{ $code }}">
+                <span>{{ config('gestion.devises.'.$code.'.0', $code) }} : attendu {{ devise($d['attendu'], $code) }}</span>
+                <span>compté {{ devise($d['compte'], $code) }}</span></div>
+        @endforeach
         @if ($c->motif_ecart)<div class="small mt-1"><span class="text-doux">Motif :</span> {{ $c->motif_ecart }}</div>@endif
         @if ($c->note)<div class="small mt-1"><span class="text-doux">Note :</span> {{ $c->note }}</div>@endif
         @if ($c->empreinte)<div class="small text-doux mt-3">Empreinte du rapport (registre inaltérable) : <code>{{ strtoupper(substr($c->empreinte, 0, 24)) }}</code></div>@endif

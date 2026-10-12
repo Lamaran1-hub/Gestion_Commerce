@@ -252,6 +252,18 @@ return [
             ],
             'lien' => 'clotures.index', 'permission' => 'ventes.voir'],
 
+        'devises' => ['rubrique' => 'caisse', 'titre' => 'Encaisser des dollars ou des euros',
+            'mots' => 'devise dollar euro usd eur franc cfa xof change taux espèces étrangères monnaie',
+            'resume' => 'Le client paie en devises : la caisse convertit au taux de la boutique et vous rendez la monnaie en GNF.',
+            'etapes' => [
+                'Paramètres → « Espèces en devises » : indiquez combien vous comptez 1 dollar, 1 euro ou 1 franc CFA en GNF. Laissez vide une devise que vous refusez ; mettez le taux à jour quand il change.',
+                'À la caisse, mode « Espèces » : choisissez « En $ (USD) » puis saisissez les billets reçus (ex. 100). Le montant reçu en GNF se calcule tout seul et la monnaie à rendre s\'affiche, en GNF.',
+                'Le reçu et la fiche de la vente indiquent les billets reçus, le taux et la monnaie rendue.',
+                'À la clôture, les devises se comptent à part : « Dollars comptés (attendus : 100 $) ». Les GNF attendus ne comprennent que les francs guinéens, le tiroir reste juste.',
+                'Le taux est fixé par la boutique, jamais par la caisse : un vendeur ne peut pas le modifier. Les devises demandent la connexion (pas de caisse hors ligne en devises).',
+            ],
+            'lien' => 'parametres.edit', 'permission' => 'parametres.gerer'],
+
         'reception' => ['rubrique' => 'stock', 'titre' => 'Recevoir une marchandise (approvisionnement)',
             'mots' => 'achat fournisseur réception arrivage livraison approvisionnement facture fournisseur',
             'resume' => 'Le stock augmente et le prix d\'achat se met à jour ; la dette fournisseur est suivie.',
