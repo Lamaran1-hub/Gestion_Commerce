@@ -31,7 +31,7 @@
         </table>
         <hr>
         @php
-            $laisseVeille = \App\Models\ClotureCaisse::where('user_id', $c->user_id)->whereDate('jour', '<', $c->jour->toDateString())->whereNotNull('laisse_en_caisse')->latest('jour')->value('laisse_en_caisse');
+            $laisseVeille = \App\Models\ClotureCaisse::where('user_id', $c->user_id)->whereDate('jour', '<', $c->jour->toDateString())->latest('jour')->value('laisse_en_caisse');
         @endphp
         @if ($c->fond_caisse || $laisseVeille)
             <div class="d-flex justify-content-between" id="fondZ"><span>Fond de caisse du matin</span><span class="montant">+ {{ gnf($c->fond_caisse) }}</span></div>

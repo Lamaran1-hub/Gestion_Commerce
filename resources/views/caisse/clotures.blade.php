@@ -20,6 +20,34 @@
         @endif
         <div class="col-md-auto"><button class="btn btn-sm btn-primary">Filtrer</button></div>
     </form>
+    @if ($parCaissier->isNotEmpty())
+        {{-- Bilan par caissier sur la période : repérer les manques répétés --}}
+        <div class="bloc mb-3" id="parCaissier">
+            <div class="bloc-entete flex-wrap gap-1"><h2 class="mb-0"><i class="bi bi-person-check me-1"></i>Écarts par caissier</h2>
+                <span class="small text-doux">« À surveiller » dès {{ $seuilManques }} manques sur la période</span></div>
+            <div class="table-responsive"><table class="table mb-0 align-middle">
+                <thead><tr><th>Caissier</th><th class="text-end d-none d-md-table-cell">Clôtures</th><th class="text-end">Manques</th><th class="text-end d-none d-md-table-cell">Excédents</th>
+                    <th class="text-end">Net</th><th class="d-none d-md-table-cell">Autres signaux</th></tr></thead>
+                <tbody>
+                @foreach ($parCaissier as $l)
+                    <tr class="{{ $l['a_surveiller'] ? 'table-warning' : '' }}">
+                        <td><a href="{{ request()->fullUrlWithQuery(['caissier' => $l['caissier']?->id]) }}" class="fw-semibold">{{ $l['caissier']?->nomComplet() ?? 'Utilisateur supprimé' }}</a>
+                            @if ($l['a_surveiller'])<span class="etat etat-rupture ms-1 text-nowrap">À surveiller</span>@endif
+                            <div class="small text-doux d-md-none">{{ collect([$l['clotures'].' clôture(s)', $l['excedents'] ? $l['excedents'].' excédent(s)' : null, $l['fonds_differents'] ? $l['fonds_differents'].' fond(s) différent(s)' : null, $l['reouvertures'] ? $l['reouvertures'].' réouverture(s)' : null])->filter()->implode(' · ') }}</div></td>
+                        <td class="text-end d-none d-md-table-cell">{{ $l['clotures'] }}</td>
+                        <td class="text-end text-nowrap {{ $l['manques'] ? 'text-danger' : 'text-doux' }}">{{ $l['manques'] }}@if ($l['manques'])<div class="small">− {{ gnf($l['total_manques']) }}</div>@endif</td>
+                        <td class="text-end text-nowrap d-none d-md-table-cell">{{ $l['excedents'] }}@if ($l['excedents'])<div class="small text-doux">+ {{ gnf($l['total_excedents']) }}</div>@endif</td>
+                        <td class="text-end text-nowrap montant {{ $l['net'] < 0 ? 'text-danger' : '' }}">{{ $l['net'] === 0 ? '0' : ($l['net'] > 0 ? '+ ' : '− ').gnf(abs($l['net'])) }}</td>
+                        <td class="small d-none d-md-table-cell">
+                            @if ($l['fonds_differents'])<div class="text-danger">{{ $l['fonds_differents'] }} fond(s) différent(s) de la veille</div>@endif
+                            @if ($l['reouvertures'])<div>{{ $l['reouvertures'] }} réouverture(s) de caisse</div>@endif
+                            @unless ($l['fonds_differents'] || $l['reouvertures'])<span class="text-doux">—</span>@endunless</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table></div>
+        </div>
+    @endif
     <div class="bloc"><div class="table-responsive"><table class="table table-hover">
         <thead><tr><th>Jour</th><th>Caissier</th><th class="text-end">Ventes</th><th class="text-end">Encaissé</th><th class="text-end">Espèces attendues</th>
             <th class="text-end">Comptées</th><th>Écart</th><th></th></tr></thead>

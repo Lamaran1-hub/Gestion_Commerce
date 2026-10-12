@@ -99,6 +99,8 @@ return [
     'marge_alerte_pct' => (float) env('MARGE_ALERTE_PCT', 10),
     // Inventaire tournant : nombre de produits proposés à compter chaque jour
     'comptage_par_jour' => (int) env('COMPTAGE_PAR_JOUR', 10),
+    // Suivi des caisses : nombre de manques sur la période à partir duquel un caissier est « à surveiller »
+    'manques_alerte' => (int) env('MANQUES_ALERTE', 3),
     'motifs_ecart_caisse' => ['Erreur de rendu de monnaie', 'Vente non enregistrée', 'Paiement mobile saisi en espèces', 'Billet douteux', 'Autre'],
     'motifs_inventaire' => ['Inventaire périodique', 'Casse ou produit abîmé', 'Perte ou vol', 'Produit périmé', 'Erreur de saisie', 'Autre'],
 

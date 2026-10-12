@@ -255,6 +255,18 @@ return [
             ],
             'lien' => 'clotures.index', 'permission' => 'ventes.voir'],
 
+        'ecarts-caisse' => ['rubrique' => 'caisse', 'titre' => 'Repérer les manques de caisse répétés',
+            'mots' => 'écart manque excédent caissier vol surveiller fraude clôture réouverture fond',
+            'resume' => 'Le bilan par caissier signale ceux qui ont des manques répétés.',
+            'etapes' => [
+                'Clôtures de caisse → bloc « Écarts par caissier » : pour la période choisie, nombre de clôtures, de manques (et leur total), d\'excédents et l\'écart net de chacun.',
+                'Un caissier est marqué « À surveiller » dès 3 manques sur la période (réglable : MANQUES_ALERTE).',
+                'Autres signaux : fond de caisse différent de ce qui avait été laissé la veille, réouvertures de caisse par l\'administrateur.',
+                'Le tableau de bord rappelle les manques répétés des 30 derniers jours. Cliquez sur un nom pour voir ses rapports Z.',
+                'Un manque isolé est souvent une erreur de monnaie : parlez-en avec le caissier, vérifiez le motif saisi et le détail des billets.',
+            ],
+            'lien' => 'clotures.index', 'permission' => 'rapports.voir'],
+
         'devises' => ['rubrique' => 'caisse', 'titre' => 'Encaisser des dollars ou des euros',
             'mots' => 'devise dollar euro usd eur franc cfa xof change taux espèces étrangères monnaie',
             'resume' => 'Le client paie en devises : la caisse convertit au taux de la boutique et vous rendez la monnaie en GNF.',

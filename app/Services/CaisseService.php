@@ -56,7 +56,7 @@ class CaisseService
     public function laisseLaVeille(User $caissier): ?int
     {
         return ClotureCaisse::where('user_id', $caissier->id)->whereDate('jour', '<', now()->toDateString())
-            ->whereNotNull('laisse_en_caisse')->latest('jour')->value('laisse_en_caisse');
+            ->latest('jour')->value('laisse_en_caisse');
     }
 
     /**

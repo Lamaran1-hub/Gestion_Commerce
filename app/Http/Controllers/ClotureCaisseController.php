@@ -32,6 +32,8 @@ class ClotureCaisseController extends Controller
             'voitTout' => $voitTout,
             'caissiers' => $voitTout ? User::where('boutique_id', boutique()->id)->orderBy('prenom')->get() : collect(),
             'ecartTotal' => (int) (clone $clotures->getCollection())->sum('ecart'),
+            'parCaissier' => $voitTout ? app(\App\Services\SuiviEcarts::class)->parCaissier($du, $au) : collect(),
+            'seuilManques' => app(\App\Services\SuiviEcarts::class)->seuilManques(),
             'ouverteAujourdhui' => ! $this->caisse->estCloturee($user),
             'du' => $du, 'au' => $au,
         ]);

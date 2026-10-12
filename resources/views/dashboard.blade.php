@@ -73,6 +73,14 @@
             </div>
         @endif
     @endcan
+    @if ($caissesASurveiller->isNotEmpty())
+        <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="status" id="caissesASurveiller">
+            <i class="bi bi-shield-exclamation fs-5"></i>
+            <div class="flex-grow-1"><strong>Manques de caisse répétés (30 jours)</strong> :
+                {{ $caissesASurveiller->map(fn ($l) => ($l['caissier']?->nomComplet() ?? 'Utilisateur supprimé').' — '.$l['manques'].' manque(s), '.gnf($l['total_manques']))->implode(' ; ') }}.</div>
+            <a href="{{ route('clotures.index', ['du' => now()->subDays(30)->toDateString()]) }}#parCaissier" class="btn btn-sm btn-warning">Voir le détail</a>
+        </div>
+    @endif
     @if ($aCompter)
         <div class="alert alert-light border d-flex flex-wrap align-items-center gap-2" role="status">
             <i class="bi bi-arrow-repeat fs-5"></i>
