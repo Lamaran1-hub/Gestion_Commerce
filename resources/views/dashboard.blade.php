@@ -81,6 +81,16 @@
             <a href="{{ route('clotures.index', ['du' => now()->subDays(30)->toDateString()]) }}#parCaissier" class="btn btn-sm btn-warning">Voir le détail</a>
         </div>
     @endif
+    @if ($aPointer && ($aPointer['nb'] || $aPointer['nb_litiges']))
+        <div class="alert {{ $aPointer['nb_litiges'] ? 'alert-danger' : 'alert-warning' }} d-flex flex-wrap align-items-center gap-2" role="status" id="rappelPointage">
+            <i class="bi bi-phone-vibrate fs-5"></i>
+            <div class="flex-grow-1">
+                @if ($aPointer['nb'])<strong>Mobile money à vérifier :</strong> {{ $aPointer['nb'] }} paiement(s) ({{ gnf($aPointer['montant']) }}) non pointé(s) depuis plus de {{ \App\Services\PointagePaiements::JOURS_RAPPEL }} jours.@endif
+                @if ($aPointer['nb_litiges'])<strong>{{ $aPointer['nb_litiges'] }} paiement(s) introuvable(s)</strong> ({{ gnf($aPointer['litiges']) }}) en litige.@endif
+            </div>
+            <a href="{{ route('pointage.index', $aPointer['nb_litiges'] && ! $aPointer['nb'] ? ['etat' => 'litiges', 'du' => now()->subYear()->toDateString()] : ['du' => \Carbon\Carbon::parse($aPointer['depuis'] ?? now())->toDateString()]) }}" class="btn btn-sm btn-light border">Pointer</a>
+        </div>
+    @endif
     @if ($aCompter)
         <div class="alert alert-light border d-flex flex-wrap align-items-center gap-2" role="status">
             <i class="bi bi-arrow-repeat fs-5"></i>

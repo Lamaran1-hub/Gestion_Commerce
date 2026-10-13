@@ -76,6 +76,7 @@ class DashboardController extends Controller
                 ? app(\App\Services\InventaireTournant::class)->duJour()->count() : 0,
             // Caissiers avec des manques répétés sur 30 jours
             'caissesASurveiller' => $request->user()->aPermission('rapports.voir') ? app(\App\Services\SuiviEcarts::class)->aSurveiller() : collect(),
+            'aPointer' => $request->user()->aPermission('tresorerie.gerer') ? app(\App\Services\PointagePaiements::class)->rappel() : null,
             'dernieresVentes' => Vente::with('client')->latest('date_vente')->limit(6)->get(),
             'parMode' => Paiement::whereBetween('date_paiement', [$du, $au])
                 ->whereHas('vente', fn ($q) => $q->where('statut', 'validee'))

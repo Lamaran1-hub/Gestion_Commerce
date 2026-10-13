@@ -294,6 +294,11 @@ Route::middleware(['auth', 'boutique'])->group(function () {
         Route::get('/tresorerie', [TresorerieController::class, 'index'])->middleware('fonction:tresorerie')->name('tresorerie.index');
         Route::post('/tresorerie', [TresorerieController::class, 'store'])->middleware('fonction:tresorerie')->name('tresorerie.store');
         Route::get('/tresorerie/{compte}', [TresorerieController::class, 'journal'])->middleware('fonction:tresorerie')->name('tresorerie.journal');
+        // Pointage mobile money / carte : inclus dans toutes les formules (contrôle anti-fraude)
+        Route::get('/pointage-paiements', [\App\Http\Controllers\PointagePaiementController::class, 'index'])->name('pointage.index');
+        Route::post('/pointage-paiements', [\App\Http\Controllers\PointagePaiementController::class, 'pointer'])->name('pointage.pointer');
+        Route::post('/pointage-paiements/{encaissement}/litige', [\App\Http\Controllers\PointagePaiementController::class, 'litige'])->name('pointage.litige');
+        Route::post('/pointage-paiements/{encaissement}/annuler', [\App\Http\Controllers\PointagePaiementController::class, 'annuler'])->name('pointage.annuler');
     });
     Route::middleware('can:rapports.voir')->group(function () {
         Route::get('/rapports', [RapportController::class, 'index'])->name('rapports.index');

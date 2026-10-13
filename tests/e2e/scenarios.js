@@ -242,7 +242,7 @@ async function confirmer(page) {
     await page.fill('#recherche', 'Huile');
     await page.locator('button.produit-tuile', { hasText: 'Huile' }).first().click();
     await page.selectOption('#mode', 'orange_money');
-    if (await page.locator('#reference').isVisible()) await page.fill('#reference', 'OM-778899');
+    if (await page.locator('#reference').isVisible()) await page.fill('#reference', 'OM-' + Date.now().toString().slice(-8));   // un numéro de transaction ne sert qu'une fois
     await page.locator('#valider').scrollIntoViewIfNeeded();
     const deborde = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     await page.click('#valider');

@@ -268,6 +268,18 @@ return [
             ],
             'lien' => 'profil.edit'],
 
+        'pointage-mobile-money' => ['rubrique' => 'caisse', 'titre' => 'Vérifier les paiements mobile money',
+            'mots' => 'orange money mtn momo mobile money carte virement chèque pointage sms relevé transaction vérifier fraude litige',
+            'resume' => 'Cochez les paiements retrouvés sur vos SMS ou votre relevé ; un même numéro de transaction ne peut pas régler deux ventes.',
+            'etapes' => [
+                'À la caisse, saisissez le numéro de transaction du SMS (Orange Money, MTN…) dans « Référence ». Un numéro déjà encaissé est refusé : un client ne peut pas montrer deux fois le même SMS.',
+                'Menu « Pointage mobile money » : pour chaque moyen, le total encaissé, ce qui est pointé et ce qui reste à pointer.',
+                'Comparez avec vos SMS ou votre relevé, cochez les paiements retrouvés puis « Marquer comme reçus ».',
+                'Un paiement absent du relevé : « Introuvable ? » le met en litige (rouge) et le note au journal. Parlez-en avec le caissier et le client ; « Retrouvé » le remet à pointer.',
+                'Le tableau de bord rappelle les paiements non pointés depuis plus de 2 jours et les litiges ouverts. Un paiement « Sans n° » est plus difficile à retrouver : demandez la référence à chaque fois.',
+            ],
+            'lien' => 'pointage.index', 'permission' => 'tresorerie.gerer'],
+
         'ecarts-caisse' => ['rubrique' => 'caisse', 'titre' => 'Repérer les manques de caisse répétés',
             'mots' => 'écart manque excédent caissier vol surveiller fraude clôture réouverture fond',
             'resume' => 'Le bilan par caissier signale ceux qui ont des manques répétés.',

@@ -96,6 +96,12 @@ class VenteService
             $autres = collect($donnees['paiements_autres'] ?? [])
                 ->map(fn ($p) => ['mode' => $p['mode'] ?? 'especes', 'montant' => (int) ($p['montant'] ?? 0), 'reference' => $p['reference'] ?? null])
                 ->filter(fn ($p) => $p['montant'] > 0)->values();
+            // Un numéro de transaction (SMS Orange Money, reçu de carte…) ne règle qu'une seule vente
+            $vus = [];
+            foreach ($autres as $p) {
+                app(PointagePaiements::class)->verifierReference($p['mode'], $p['reference'], $vus);
+            }
+            app(PointagePaiements::class)->verifierReference($donnees['mode'] ?? 'especes', $donnees['reference'] ?? null, $vus);
             $totalAutres = (int) $autres->sum('montant');
             $avantAutres = $ttc - $acompte - $points - $avoir - $parCarte - $parBon;
             if ($totalAutres > $avantAutres) {
@@ -209,6 +215,7 @@ class VenteService
             if ($montant > $v->resteAPayer()) {
                 throw new OperationRefusee('Le montant dépasse le reste à payer ('.gnf($v->resteAPayer()).').');
             }
+            app(PointagePaiements::class)->verifierReference($mode, $reference);
 
             $paiement = $this->enregistrerPaiement($v, $montant, $mode, $reference);
             JournalActivite::noter('paiement', 'Paiement de '.gnf($montant)." sur {$v->numero}");
@@ -228,6 +235,7 @@ class VenteService
 
         return DB::transaction(function () use ($client, $montant, $mode, $reference) {
             $du = $client->soldeDu();
+            app(PointagePaiements::class)->verifierReference($mode, $reference);   // le versement peut ensuite se répartir sur plusieurs ventes
             if ($montant <= 0 || $montant > $du) {
                 throw new OperationRefusee('Le montant doit être compris entre 1 et '.gnf($du).'.');
             }

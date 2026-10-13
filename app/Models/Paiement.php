@@ -12,7 +12,7 @@ class Paiement extends Model
 
     protected $fillable = ['vente_id', 'client_id', 'montant', 'mode', 'devise', 'montant_devise', 'taux_devise', 'contre_valeur', 'reference', 'date_paiement', 'user_id'];
 
-    protected $casts = ['date_paiement' => 'datetime', 'montant' => 'integer', 'montant_devise' => 'float', 'taux_devise' => 'float', 'contre_valeur' => 'integer'];
+    protected $casts = ['date_paiement' => 'datetime', 'montant' => 'integer', 'montant_devise' => 'float', 'taux_devise' => 'float', 'contre_valeur' => 'integer', 'pointe_le' => 'datetime'];
 
     protected static function booted(): void
     {
@@ -31,6 +31,12 @@ class Paiement extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class)->withTrashed();
+    }
+
+    /** Responsable qui a retrouvé (ou non) le paiement sur ses SMS ou son relevé. */
+    public function pointeur(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pointe_par');
     }
 
     public function caissier(): BelongsTo

@@ -104,6 +104,7 @@
                         {!! $lien('cartes-cadeaux.index', 'gift', 'Cartes cadeaux', 'cartes-cadeaux.*') !!}
                         {!! $lien('clotures.index', 'lock', 'Clôtures de caisse', 'clotures.*') !!}
                     @endcan
+                    @can('tresorerie.gerer') {!! $lien('pointage.index', 'phone-vibrate', 'Pointage mobile money', 'pointage.*') !!} @endcan
                     @can('clients.voir') {!! $lien('clients.index', 'people', 'Clients', 'clients.*') !!} @endcan
                 @endcanany
 
