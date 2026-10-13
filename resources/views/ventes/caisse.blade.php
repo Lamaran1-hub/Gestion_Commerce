@@ -5,6 +5,8 @@
         // Mode proforma : même écran, mais ni paiement ni sortie de stock (enregistré comme devis / facture proforma)
         $proforma = request()->boolean('proforma');
         $peutRemise = auth()->user()->aPermission('ventes.remise');
+        // Responsables ayant un code : ils peuvent accorder une remise au-delà du maximum, ou à la place d'un vendeur sans ce droit
+        $responsables = app(\App\Services\AccordResponsable::class)->responsables();
         $promos = app(\App\Services\Promotions::class);
         $peutCreerClient = auth()->user()->aPermission('clients.gerer');
         $catalogue = $produits->map(fn ($p) => ['id' => $p->id, 'nom' => $p->designation, 'code' => $p->code_barre, 'prix' => $p->prix_vente, 'gros' => $p->prix_gros, 'qteGros' => $p->quantite_gros ? (float) $p->quantite_gros : null, 'stock' => (float) $p->stock, 'unite' => $p->unite,
@@ -153,13 +155,26 @@
                 <div id="champsLignes"></div>
 
                 <div class="d-flex justify-content-between mt-3"><span class="text-doux">Sous-total</span><span id="sousTotal" class="montant">0 GNF</span></div>
-                @if ($peutRemise)
+                @if ($peutRemise || $responsables->isNotEmpty())
                     <div class="d-flex justify-content-between align-items-center mt-2 gap-2">
                         <label for="remise" class="text-doux">Remise
                             @if (boutique()->remise_max_pct !== null)<span class="small">(max {{ rtrim(rtrim(number_format(boutique()->remise_max_pct, 2, ',', ''), '0'), ',') }} %)</span>@endif</label>
                         <input name="remise" id="remise" data-montant value="{{ old('remise') }}" class="form-control form-control-sm text-end" style="max-width:150px" inputmode="numeric" placeholder="0">
                     </div>
                     <div class="small text-danger text-end d-none" id="alerteRemise" aria-live="polite"></div>
+                    @if ($responsables->isNotEmpty())
+                        {{-- Accord du responsable : son nom et son code, demandés seulement quand la remise en a besoin --}}
+                        <div class="d-none mt-2 p-2 rounded border" id="blocAccord">
+                            <div class="small fw-semibold mb-1"><i class="bi bi-key me-1"></i>Accord du responsable</div>
+                            <div class="d-flex gap-2">
+                                <select name="responsable_id" id="responsable_id" class="form-select form-select-sm" aria-label="Responsable qui accorde la remise" disabled>
+                                    @foreach ($responsables as $r)<option value="{{ $r->id }}" @selected(old('responsable_id') == $r->id)>{{ $r->nomComplet() }}</option>@endforeach
+                                </select>
+                                <input type="password" name="code_accord" id="code_accord" class="form-control form-control-sm" style="max-width:110px"
+                                       inputmode="numeric" maxlength="6" placeholder="Code" aria-label="Code du responsable" autocomplete="off" disabled>
+                            </div>
+                        </div>
+                    @endif
                 @endif
                 @if (boutique()->tva_active)
                     <div class="d-flex justify-content-between mt-2"><span class="text-doux">{{ \App\Services\VenteService::prixTtc() ? 'dont TVA' : 'TVA' }} <span class="small">({{ \App\Services\VenteService::prixTtc() ? 'comprise dans les prix' : 'par produit, exonérés à 0 %' }})</span></span><span id="tva" class="montant">0 GNF</span></div>
@@ -313,6 +328,7 @@
     const tauxTva = {{ boutique()->tva_active ? (float) boutique()->tva_taux : 0 }};
     const prixTtc = @json(\App\Services\VenteService::prixTtc());
     const remiseMaxPct = {{ Js::from(boutique()->remise_max_pct !== null ? (float) boutique()->remise_max_pct : null) }};
+    const peutRemise = @json($peutRemise);
     const panier = new Map(); // id => { produit, quantite }
     const $ = (id) => document.getElementById(id);
 
@@ -564,8 +580,17 @@
         if ($('alerteRemise')) {
             const maxRemise = remiseMaxPct === null ? null : Math.floor(t.sousTotal * remiseMaxPct / 100);
             const trop = maxRemise !== null && t.remise > maxRemise;
-            $('alerteRemise').classList.toggle('d-none', !trop);
-            $('alerteRemise').textContent = trop ? `Remise trop élevée : ${gnf(maxRemise)} au maximum.` : '';
+            // Sans droit de remise, ou au-delà du maximum : un responsable l'accorde avec son code
+            const accord = t.remise > 0 && (!peutRemise || trop) && !!$('blocAccord');
+            $('alerteRemise').classList.toggle('d-none', !trop && !accord);
+            $('alerteRemise').textContent = accord ? (trop ? `Au-delà de ${gnf(maxRemise)}, la remise doit être accordée par un responsable.` : 'La remise doit être accordée par un responsable.')
+                : (trop ? `Remise trop élevée : ${gnf(maxRemise)} au maximum.` : '');
+            if ($('blocAccord')) {
+                $('blocAccord').classList.toggle('d-none', !accord);
+                $('responsable_id').disabled = $('code_accord').disabled = !accord;
+                $('code_accord').required = accord;
+                if (!accord) $('code_accord').value = '';
+            }
         }
         if ($('tva')) $('tva').textContent = gnf(t.tva);
         $('total').textContent = gnf(t.total);
@@ -771,6 +796,7 @@
         if (!$('blocAvoir').classList.contains('d-none') && $('utiliser_avoir').checked) return erreur('L\'avoir du client n\'est pas utilisable hors connexion.');
         if ($('blocEchange')) return erreur('Un échange a besoin de la connexion : réessayez dès qu\'elle revient.');
         if ($('devise')?.value) return erreur('Le paiement en devises a besoin de la connexion : encaissez en GNF ou réessayez dès qu\'elle revient.');
+        if ($('code_accord') && !$('code_accord').disabled) return erreur('L\'accord du responsable a besoin de la connexion : réduisez la remise ou réessayez dès qu\'elle revient.');
         const autres = [...document.querySelectorAll('.autre-paiement')].map(r => ({
             mode: r.querySelector('[data-champ=mode]').value, montant: nombre(r.querySelector('[data-champ=montant]').value),
             reference: r.querySelector('[data-champ=reference]').value || null })).filter(p => p.montant > 0);

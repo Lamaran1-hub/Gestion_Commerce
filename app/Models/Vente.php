@@ -15,7 +15,7 @@ class Vente extends Model
     protected $fillable = [
         'numero', 'client_id', 'date_vente', 'total_ht', 'remise', 'tva_taux', 'total_tva',
         'total_ttc', 'montant_paye', 'montant_retourne', 'statut', 'note', 'user_id', 'annulee_le', 'annulee_par', 'motif_annulation',
-        'uuid_hors_ligne', 'synchronisee_le', 'echeance', 'prix_ttc',
+        'uuid_hors_ligne', 'synchronisee_le', 'echeance', 'prix_ttc', 'remise_accordee_par',
         'livraison', 'livraison_adresse', 'livraison_contact', 'livraison_prevue_le', 'livreur', 'livree_le', 'livree_a',
     ];
 
@@ -35,6 +35,12 @@ class Vente extends Model
     public function vendeur(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** Responsable qui a autorisé la remise avec son code (au-delà du maximum, ou vendeur sans droit de remise). */
+    public function accordePar(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'remise_accordee_par');
     }
 
     public function lignes(): HasMany

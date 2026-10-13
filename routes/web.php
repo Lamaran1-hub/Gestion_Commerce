@@ -73,6 +73,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profil', [ProfilController::class, 'edit'])->name('profil.edit');
     Route::put('/profil', [ProfilController::class, 'update'])->name('profil.update');
     Route::put('/profil/mot-de-passe', [ProfilController::class, 'motDePasse'])->name('profil.mot-de-passe');
+    Route::put('/profil/code-accord', [ProfilController::class, 'codeAccord'])->name('profil.code-accord');
+    Route::delete('/profil/code-accord', [ProfilController::class, 'retirerCodeAccord']);
     Route::delete('/profil/appareils', [ProfilController::class, 'deconnecterAutres'])->name('profil.appareils.autres');
     Route::delete('/profil/appareils/{empreinte}', [ProfilController::class, 'deconnecterAppareil'])->where('empreinte', '[0-9a-f]{32}')->name('profil.appareils.deconnecter');
     Route::post('/profil/rappel-mot-de-passe', [ProfilController::class, 'reporterRappel'])->name('profil.rappel-plus-tard');

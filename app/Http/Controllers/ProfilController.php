@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\JournalActivite;
 use App\Notifications\AlerteSecuriteCompte;
+use App\Services\AccordResponsable;
 use App\Support\Appareils;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
@@ -108,6 +109,30 @@ class ProfilController extends Controller
 
         return redirect()->route($request->user()->est_super_admin ? 'admin.dashboard' : 'dashboard')
             ->with('succes', 'Mot de passe modifié.');
+    }
+
+    /** Code d'accord du responsable : autorise depuis la caisse une remise au-delà du maximum. */
+    public function codeAccord(Request $request, AccordResponsable $accords)
+    {
+        $request->validate([
+            'code_accord' => ['required', 'confirmed'],
+            'mot_de_passe_code' => ['required', 'current_password'],
+        ], ['code_accord.confirmed' => 'Les deux codes ne sont pas identiques.', 'mot_de_passe_code.current_password' => 'Le mot de passe est incorrect.']);
+        $nouveau = ! $request->user()->code_accord;
+        $accords->definir($request->user(), (string) $request->code_accord);
+        $this->journal($request->user()->nomComplet().($nouveau ? ' a choisi' : ' a changé').' son code d\'accord du responsable');
+
+        return redirect()->route('profil.edit')->with('succes', 'Code d\'accord enregistré : à la caisse, choisissez votre nom puis tapez-le.');
+    }
+
+    public function retirerCodeAccord(Request $request)
+    {
+        if ($request->user()->code_accord) {
+            $request->user()->forceFill(['code_accord' => null])->save();
+            $this->journal($request->user()->nomComplet().' a retiré son code d\'accord du responsable');
+        }
+
+        return redirect()->route('profil.edit')->with('succes', 'Code d\'accord retiré.');
     }
 
     /**

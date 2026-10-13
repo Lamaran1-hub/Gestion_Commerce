@@ -137,7 +137,8 @@ class VenteController extends Controller
 
         $d['reference'] = reference_paiement();
         $peutRemise = $request->user()->aPermission('ventes.remise');
-        $d['remise'] = $peutRemise ? montant_saisi($d['remise'] ?? 0) : 0;
+        $d['accord'] = accord_responsable($request);   // code du responsable tapé sur la caisse
+        $d['remise'] = $peutRemise || $d['accord'] ? montant_saisi($d['remise'] ?? 0) : 0;
         $d['montant_recu'] = isset($d['montant_recu']) && $d['montant_recu'] !== '' ? montant_saisi($d['montant_recu']) : null;
         $d['devise'] = $this->especesEnDevise($d);
         if ($d['devise']) {

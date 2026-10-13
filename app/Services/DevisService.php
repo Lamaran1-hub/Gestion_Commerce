@@ -40,7 +40,8 @@ class DevisService
             [$details, $totalHt] = $this->ventes->detaillerLignes($lignes, $client, $peutModifierPrix);
             $remise = min((int) ($donnees['remise'] ?? 0), $totalHt);
             $prixTtc = VenteService::prixTtc($boutique);
-            $this->ventes->verifierPrixEtRemise($boutique, $details, $totalHt, $remise, $prixTtc);
+            $accord = $remise > 0 ? ($donnees['accord'] ?? null) : null;
+            $this->ventes->verifierPrixEtRemise($boutique, $details, $totalHt, $remise, $prixTtc, $accord);
             $totaux = \App\Support\Tva::totaux($details, $totalHt, $remise, $prixTtc);
             $taux = $totaux['principal'];
             $tva = $totaux['tva'];
@@ -50,7 +51,7 @@ class DevisService
                 'client_id' => $client?->id, 'client_nom' => $client ? null : ($donnees['client_nom'] ?? null),
                 'date_devis' => now()->toDateString(),
                 'valable_jusqu_au' => now()->addDays($boutique->validite_devis_jours ?: 15)->toDateString(),
-                'total_ht' => $totaux['total_ht'], 'remise' => $remise, 'tva_taux' => $taux, 'total_tva' => $tva,
+                'total_ht' => $totaux['total_ht'], 'remise' => $remise, 'remise_accordee_par' => $accord?->id, 'tva_taux' => $taux, 'total_tva' => $tva,
                 'total_ttc' => $totaux['total_ttc'], 'prix_ttc' => $prixTtc, 'note' => $donnees['note'] ?? null, 'user_id' => $auteur?->id,
                 'origine' => $donnees['origine'] ?? 'caisse', 'client_telephone' => $donnees['client_telephone'] ?? null,
             ]);
@@ -59,7 +60,8 @@ class DevisService
                     'quantite' => $d['quantite'], 'facteur' => $d['facteur'], 'unite' => $d['unite'],
                     'prix_unitaire' => $d['prix'], 'total' => $d['total'], 'taux_tva' => $d['taux']]);
             }
-            JournalActivite::noter('devis', "Devis {$devis->numero} de ".gnf($devis->total_ttc).' pour '.$devis->nomClient());
+            JournalActivite::noter('devis', "Devis {$devis->numero} de ".gnf($devis->total_ttc).' pour '.$devis->nomClient()
+                .($accord ? ' — remise de '.gnf($remise).' accordée par '.$accord->nomComplet().' (code du responsable)' : ''));
 
             return $devis;
         });
@@ -85,6 +87,7 @@ class DevisService
                     'conditionnement' => $l->facteur > 1,
                 ])->values()->all(),
                 'remise' => $d->remise,
+                'accord' => $d->remise_accordee_par ? $d->accordePar : null,
                 'acompte' => $d->acompte,
                 'reference_acompte' => "Acompte {$d->numero}",
                 'montant_recu' => $paiement['montant_recu'] ?? null,

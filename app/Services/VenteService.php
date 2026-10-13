@@ -50,7 +50,8 @@ class VenteService
             $remise = min((int) ($donnees['remise'] ?? 0), $totalHt);
             // Prix TTC (TVA comprise dans les prix affichés) ou hors taxe (la TVA s'ajoute) : réglage de la boutique, mémorisé sur la vente
             $prixTtc = self::prixTtc($boutique);
-            $this->verifierPrixEtRemise($boutique, $details, $totalHt, $remise, $prixTtc);
+            $accord = $remise > 0 ? ($donnees['accord'] ?? null) : null;   // responsable qui a tapé son code
+            $this->verifierPrixEtRemise($boutique, $details, $totalHt, $remise, $prixTtc, $accord);
             // TVA multi-taux : remise répartie au prorata, TVA calculée par taux (produits exonérés compris)
             $totaux = \App\Support\Tva::totaux($details, $totalHt, $remise, $prixTtc);
             $taux = $totaux['principal'];
@@ -124,6 +125,7 @@ class VenteService
                 'date_vente' => $date,
                 'total_ht' => $totaux['total_ht'],
                 'remise' => $remise,
+                'remise_accordee_par' => $accord?->id,
                 'tva_taux' => $taux,
                 'total_tva' => $tva,
                 'total_ttc' => $ttc,
@@ -184,7 +186,8 @@ class VenteService
                 $this->enregistrerPaiement($vente, $paye, $donnees['mode'] ?? 'especes', $donnees['reference'] ?? null, $date, $donnees['devise'] ?? null);
             }
 
-            JournalActivite::noter('vente', "Vente {$vente->numero} de ".gnf($ttc));
+            JournalActivite::noter('vente', "Vente {$vente->numero} de ".gnf($ttc)
+                .($accord ? ' — remise de '.gnf($remise).' accordée par '.$accord->nomComplet().' (code du responsable)' : ''));
 
             return $vente->fresh(['lignes', 'client', 'paiements']);
         });
@@ -347,7 +350,7 @@ class VenteService
      *
      * @param  array<int,array{produit:Produit,prix:int,quantite:float,facteur?:float,total:int}>  $details
      */
-    public function verifierPrixEtRemise(\App\Models\Boutique $boutique, array $details, int $totalHt, int $remise, bool $prixTtc = false): void
+    public function verifierPrixEtRemise(\App\Models\Boutique $boutique, array $details, int $totalHt, int $remise, bool $prixTtc = false, ?\App\Models\User $accord = null): void
     {
         // Prix TTC : on compare au prix d'achat le prix hors taxe (la TVA n'est pas un gain pour la boutique)
         if ($prixTtc) {
@@ -358,9 +361,11 @@ class VenteService
             $totalHt = $sommeHt;
         }
         $max = $boutique->remise_max_pct;
-        if ($remise > 0 && $max !== null && $remise > $totalHt * $max / 100) {
+        // Au-delà du maximum, il faut l'accord d'un responsable (son code tapé sur la caisse)
+        if ($remise > 0 && $max !== null && $remise > $totalHt * $max / 100 && ! $accord) {
             throw new OperationRefusee('La remise dépasse le maximum autorisé par la boutique : '.rtrim(rtrim(number_format($max, 2, ',', ''), '0'), ',')
-                .' % du montant, soit '.gnf((int) floor($totalHt * $max / 100)).' au plus.');
+                .' % du montant, soit '.gnf((int) floor($totalHt * $max / 100)).' au plus.'
+                .(app(AccordResponsable::class)->responsables()->isNotEmpty() ? ' Au-delà, un responsable doit l\'accorder avec son code.' : ''));
         }
         if ($boutique->vente_a_perte) {
             return;

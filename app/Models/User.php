@@ -16,7 +16,7 @@ class User extends Authenticatable
         'est_super_admin', 'actif', 'doit_changer_mot_de_passe', 'derniere_connexion', 'recevoir_nouveautes', 'objectif_mensuel', 'commission_pct',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'code_accord'];
 
     protected $attributes = ['actif' => true, 'est_super_admin' => false, 'doit_changer_mot_de_passe' => false];
 

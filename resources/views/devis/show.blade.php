@@ -46,7 +46,7 @@
                 </tbody>
                 <tfoot>
                     <tr><td colspan="3" class="text-end text-doux">Sous-total</td><td class="text-end montant">{{ gnf($d->sousTotal()) }}</td></tr>
-                    @if ($d->remise)<tr><td colspan="3" class="text-end text-doux">Remise</td><td class="text-end montant">− {{ gnf($d->remise) }}</td></tr>@endif
+                    @if ($d->remise)<tr><td colspan="3" class="text-end text-doux">Remise @if ($d->remise_accordee_par)<span class="d-block small" id="remiseAccordee"><i class="bi bi-key me-1"></i>accordée par {{ $d->accordePar?->nomComplet() ?? 'un responsable' }}</span>@endif</td><td class="text-end montant">− {{ gnf($d->remise) }}</td></tr>@endif
                     @if ($d->total_tva || collect($d->ventilationTva())->count() > 1)
                         @foreach ($d->ventilationTva() as $v)
                             <tr><td colspan="3" class="text-end text-doux">{{ $v['taux'] > 0 ? $d->libelleTva($v['taux']).' sur '.gnf($v['base']).($d->prix_ttc ? ' HT' : '') : 'Exonéré de TVA (montant HT)' }}</td><td class="text-end montant">{{ $v['taux'] > 0 ? gnf($v['tva']) : gnf($v['base']) }}</td></tr>

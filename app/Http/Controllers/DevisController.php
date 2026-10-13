@@ -45,7 +45,8 @@ class DevisController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ], ['lignes.required' => 'Ajoutez au moins un produit au devis.']);
         $peutRemise = $request->user()->aPermission('ventes.remise');
-        $d['remise'] = $peutRemise ? montant_saisi($d['remise'] ?? 0) : 0;
+        $d['accord'] = accord_responsable($request);   // code du responsable tapé sur la caisse
+        $d['remise'] = $peutRemise || $d['accord'] ? montant_saisi($d['remise'] ?? 0) : 0;
 
         $devis = $this->service->creer($d, $peutRemise, $request->user());
 

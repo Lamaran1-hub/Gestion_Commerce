@@ -52,6 +52,38 @@
                 </div>
             </form>
         </div>
+        @if (\App\Services\AccordResponsable::estResponsable($user) && $user->boutique_id)
+            <div class="col-lg-6">
+                <div class="bloc" id="codeAccord">
+                    <div class="bloc-entete flex-wrap gap-2"><h2 class="mb-0"><i class="bi bi-key me-1"></i>Code d'accord du responsable</h2>
+                        @if ($user->code_accord)<span class="etat etat-ok">Code choisi</span>@else<span class="etat etat-neutre">Pas de code</span>@endif</div>
+                    <div class="bloc-corps">
+                        <p class="small text-doux">À la caisse, une remise au-delà du maximum de la boutique, ou faite par un vendeur sans droit de remise,
+                            passe quand vous choisissez votre nom et tapez ce code. Ne le donnez à personne : chaque accord est noté à votre nom.</p>
+                        <form method="post" action="{{ route('profil.code-accord') }}" class="row g-3">
+                            @csrf @method('put')
+                            <div class="col-sm-6"><label class="form-label" for="code_accord">{{ $user->code_accord ? 'Nouveau code' : 'Code' }} (4 à 6 chiffres)</label>
+                                <input type="password" name="code_accord" id="code_accord" class="form-control" inputmode="numeric" pattern="\d{4,6}" maxlength="6" required autocomplete="off"></div>
+                            <div class="col-sm-6"><label class="form-label" for="code_accord_confirmation">Confirmation</label>
+                                <input type="password" name="code_accord_confirmation" id="code_accord_confirmation" class="form-control" inputmode="numeric" pattern="\d{4,6}" maxlength="6" required autocomplete="off"></div>
+                            <div class="col-12"><label class="form-label" for="mot_de_passe_code">Votre mot de passe</label>
+                                <input type="password" name="mot_de_passe_code" id="mot_de_passe_code" class="form-control" required autocomplete="current-password"></div>
+                            <div class="col-12 d-flex flex-wrap gap-2">
+                                <button class="btn btn-primary">{{ $user->code_accord ? 'Changer le code' : 'Choisir ce code' }}</button>
+                                @if ($user->code_accord)
+                                    <button type="submit" form="retirerCodeAccord" class="btn btn-outline-danger">Retirer mon code</button>
+                                @endif
+                            </div>
+                        </form>
+                        @if ($user->code_accord)
+                            <form method="post" action="{{ route('profil.code-accord') }}" id="retirerCodeAccord" data-confirmer="Retirer votre code ? Vous ne pourrez plus accorder de remise depuis la caisse d'un vendeur." data-confirmer-bouton="Retirer">
+                                @csrf @method('delete')
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
         @if ($connexions->isNotEmpty())
             <div class="col-12">
                 <div class="bloc" id="connexions">

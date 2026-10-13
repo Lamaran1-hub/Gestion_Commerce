@@ -16,7 +16,7 @@ class Devis extends Model
 
     protected $fillable = [
         'boutique_id', 'numero', 'client_id', 'client_nom', 'date_devis', 'valable_jusqu_au', 'total_ht', 'remise',
-        'tva_taux', 'total_tva', 'total_ttc', 'acompte', 'statut', 'vente_id', 'note', 'user_id', 'origine', 'client_telephone', 'prix_ttc',
+        'tva_taux', 'total_tva', 'total_ttc', 'acompte', 'statut', 'vente_id', 'note', 'user_id', 'origine', 'client_telephone', 'prix_ttc', 'remise_accordee_par',
     ];
 
     protected $casts = [
@@ -72,6 +72,12 @@ class Devis extends Model
     public function auteur(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** Responsable qui a autorisé la remise avec son code (au-delà du maximum, ou vendeur sans droit de remise). */
+    public function accordePar(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'remise_accordee_par');
     }
 
     /** Commandes reçues sur la vitrine en ligne, pas encore traitées (ni vendues, ni annulées, ni expirées). */

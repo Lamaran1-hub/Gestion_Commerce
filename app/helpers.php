@@ -113,6 +113,19 @@ if (! function_exists('reference_paiement')) {
     }
 }
 
+if (! function_exists('accord_responsable')) {
+    /** Responsable qui a tapé son code sur la caisse pour accorder la remise (null si aucun code saisi). */
+    function accord_responsable(\Illuminate\Http\Request $request): ?\App\Models\User
+    {
+        $code = trim((string) $request->input('code_accord'));
+        if ($code === '') {
+            return null;
+        }
+
+        return app(\App\Services\AccordResponsable::class)->verifier((int) $request->input('responsable_id'), mb_substr($code, 0, 10), $request->user());
+    }
+}
+
 if (! function_exists('fonction')) {
     /** La fonction est-elle disponible dans la formule de la boutique courante ? */
     function fonction(string $cle): bool
