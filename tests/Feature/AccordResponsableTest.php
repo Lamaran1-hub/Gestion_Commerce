@@ -124,4 +124,54 @@ class AccordResponsableTest extends TestCase
         $this->actingAs($admin->fresh())->delete('/profil/code-accord')->assertSessionHas('succes');
         $this->assertNull($admin->fresh()->code_accord);
     }
+
+    public function test_annulation_par_un_vendeur_avec_le_code_du_responsable(): void
+    {
+        [$b, $admin, $gestionnaire, $vendeur, $p] = $this->equipe();
+        $this->actingAs($vendeur)->post('/ventes', $this->vente($p->id, ['remise' => '0']))->assertSessionHas('succes');
+        $v = $this->dans($b, fn () => Vente::sole());
+
+        // Aucun responsable n'a de code : le vendeur ne voit pas l'annulation et ne peut pas annuler
+        $this->get("/ventes/{$v->id}")->assertDontSee('id="formAnnulation"', false);
+        $this->post("/ventes/{$v->id}/annuler", ['motif' => 'Erreur de saisie'])->assertSessionHas('erreur', fn ($m) => str_contains($m, 'Un responsable doit autoriser'));
+
+        // Avec un code : le bloc d'accord apparaît ; code faux refusé, bon code accepté
+        $admin->forceFill(['code_accord' => bcrypt('2580')])->save();
+        $this->get("/ventes/{$v->id}")->assertSee('id="formAnnulation"', false)->assertSee('id="accordAnnulation"', false);
+        $this->post("/ventes/{$v->id}/annuler", ['motif' => 'Erreur de saisie', 'responsable_id' => $admin->id, 'code_accord' => '0000'])
+            ->assertSessionHas('erreur', fn ($m) => str_contains($m, 'Code du responsable incorrect'));
+        $this->assertSame('validee', $v->fresh()->statut);
+        $this->post("/ventes/{$v->id}/annuler", ['motif' => 'Erreur de saisie', 'responsable_id' => $admin->id, 'code_accord' => '2580'])->assertSessionHas('succes');
+        $v->refresh();
+        $this->assertSame(['annulee', $admin->id, $vendeur->id], [$v->statut, $v->annulation_accordee_par, $v->annulee_par]);
+        $this->assertEquals(20, $p->fresh()->stock);
+        $this->get("/ventes/{$v->id}")->assertSee('id="annulationAccordee"', false)->assertSee('Accordée par Admin Boutique Test');
+        $this->assertTrue($this->dans($b, fn () => JournalActivite::where('description', "Annulation de la vente {$v->numero} : Erreur de saisie — accordée par Admin Boutique Test (code du responsable)")->exists()));
+        $this->assertTrue(app(Registre::class)->verifier($b->fresh())['intact']);
+    }
+
+    public function test_annulation_hors_delai_avec_le_code_du_responsable(): void
+    {
+        [$b, $admin, $gestionnaire, $vendeur, $p] = $this->equipe();
+        $b->update(['delai_annulation_heures' => 2]);
+        $admin->forceFill(['code_accord' => bcrypt('2580')])->save();
+        $this->actingAs($gestionnaire)->post('/ventes', $this->vente($p->id, ['remise' => '0']))->assertSessionHas('succes');
+        $v = $this->dans($b, fn () => Vente::sole());
+
+        // Dans le délai, le gestionnaire annule seul : pas de bloc d'accord
+        $this->get("/ventes/{$v->id}")->assertSee('id="formAnnulation"', false)->assertDontSee('id="accordAnnulation"', false);
+        // Hors délai : il lui faut le code de l'administrateur
+        $this->travel(3)->hours();
+        $this->flushSession();
+        $this->actingAs($gestionnaire->fresh());
+        $this->get("/ventes/{$v->id}")->assertSee('ou un responsable avec son code')->assertSee('id="accordAnnulation"', false);
+        $this->post("/ventes/{$v->id}/annuler", ['motif' => 'Erreur de saisie'])->assertSessionHas('erreur', fn ($m) => str_contains($m, 'ou un responsable avec son code'));
+        $this->post("/ventes/{$v->id}/annuler", ['motif' => 'Erreur de saisie', 'responsable_id' => $admin->id, 'code_accord' => '2580'])->assertSessionHas('succes');
+        $this->assertSame(['annulee', $admin->id], [$v->fresh()->statut, $v->fresh()->annulation_accordee_par]);
+        // Annulation faite par quelqu'un qui en a le droit : rien n'est accordé
+        $this->post('/ventes', $this->vente($p->id, ['remise' => '0']));
+        $v2 = $this->dans($b, fn () => Vente::latest('id')->first());
+        $this->post("/ventes/{$v2->id}/annuler", ['motif' => 'Erreur de saisie'])->assertSessionHas('succes');
+        $this->assertNull($v2->fresh()->annulation_accordee_par);
+    }
 }

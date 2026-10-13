@@ -170,7 +170,7 @@
                                 <select name="responsable_id" id="responsable_id" class="form-select form-select-sm" aria-label="Responsable qui accorde la remise" disabled>
                                     @foreach ($responsables as $r)<option value="{{ $r->id }}" @selected(old('responsable_id') == $r->id)>{{ $r->nomComplet() }}</option>@endforeach
                                 </select>
-                                <input type="password" name="code_accord" id="code_accord" class="form-control form-control-sm" style="max-width:110px"
+                                <input type="password" name="code_accord" id="code_accord" class="form-control form-control-sm" style="max-width:140px;min-width:120px"
                                        inputmode="numeric" maxlength="6" placeholder="Code" aria-label="Code du responsable" autocomplete="off" disabled>
                             </div>
                         </div>

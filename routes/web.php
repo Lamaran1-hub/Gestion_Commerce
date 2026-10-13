@@ -168,7 +168,7 @@ Route::middleware(['auth', 'boutique'])->group(function () {
         Route::delete('/clotures/{cloture}', [ClotureCaisseController::class, 'destroy'])->name('clotures.destroy');
     });
     Route::post('/ventes/{vente}/retours', [VenteController::class, 'retour'])->middleware('can:ventes.annuler')->name('ventes.retour');
-    Route::post('/ventes/{vente}/annuler', [VenteController::class, 'annuler'])->middleware('can:ventes.annuler')->name('ventes.annuler');
+    Route::post('/ventes/{vente}/annuler', [VenteController::class, 'annuler'])->middleware('can:ventes.voir')->name('ventes.annuler');   // droit d'annuler, ou code du responsable
     Route::post('/cartes-cadeaux/{carte}/annuler', [\App\Http\Controllers\CarteCadeauController::class, 'annuler'])->middleware('can:ventes.annuler')->name('cartes-cadeaux.annuler');
     Route::post('/cartes-cadeaux/{carte}/prolonger', [\App\Http\Controllers\CarteCadeauController::class, 'prolonger'])->middleware('can:ventes.annuler')->name('cartes-cadeaux.prolonger');
     Route::post('/ventes/{vente}/paiements', [VenteController::class, 'paiement'])->middleware('can:paiements.creer')->name('ventes.paiement');

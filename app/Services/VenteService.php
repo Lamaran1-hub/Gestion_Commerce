@@ -248,9 +248,10 @@ class VenteService
         });
     }
 
-    public function annuler(Vente $vente, string $motif): Vente
+    /** @param  \App\Models\User|null  $accord  responsable qui a autorisé l'annulation avec son code */
+    public function annuler(Vente $vente, string $motif, ?\App\Models\User $accord = null): Vente
     {
-        return DB::transaction(function () use ($vente, $motif) {
+        return DB::transaction(function () use ($vente, $motif, $accord) {
             $v = Vente::whereKey($vente->id)->lockForUpdate()->firstOrFail();
             if ($v->statut === 'annulee') {
                 throw new OperationRefusee('Cette vente est déjà annulée.');
@@ -267,10 +268,11 @@ class VenteService
             if ($v->montant_paye > 0) {
                 app(CaisseService::class)->verifierOuverte(auth()->user());
             }
-            // Passé le délai fixé par la boutique, seul l'administrateur peut encore annuler
+            // Passé le délai fixé par la boutique, seul l'administrateur (ou un responsable avec son code) peut encore annuler
             $delai = boutique()?->delai_annulation_heures;
-            if ($delai && $v->date_vente->copy()->addHours($delai)->isPast() && ! auth()->user()?->role?->systeme) {
-                throw new OperationRefusee("Cette vente date de plus de {$delai} h : seul l'administrateur de la boutique peut l'annuler.");
+            if ($delai && $v->date_vente->copy()->addHours($delai)->isPast() && ! auth()->user()?->role?->systeme && ! $accord) {
+                throw new OperationRefusee("Cette vente date de plus de {$delai} h : seul l'administrateur de la boutique peut l'annuler"
+                    .(app(AccordResponsable::class)->responsables()->isNotEmpty() ? ', ou un responsable avec son code.' : '.'));
             }
 
             foreach ($v->lignes as $ligne) {
@@ -284,6 +286,7 @@ class VenteService
                 'annulee_le' => now(),
                 'annulee_par' => auth()->id(),
                 'motif_annulation' => $motif,
+                'annulation_accordee_par' => $accord?->id,
             ]);
             app(Fidelite::class)->annulerVente($v);
             app(Avoirs::class)->annulerVente($v);
@@ -291,8 +294,10 @@ class VenteService
             app(CartesCadeaux::class)->annulerVente($v);
             app(Echanges::class)->annulerVente($v);
             app(Registre::class)->inscrire($v->boutique_id, 'annulation', $v->id,
-                ['vente_id' => $v->id, 'numero' => $v->numero, 'motif' => $motif, 'date' => now()->format('Y-m-d H:i:s'), 'user_id' => auth()->id()]);
-            JournalActivite::noter('annulation', "Annulation de la vente {$v->numero} : {$motif}");
+                ['vente_id' => $v->id, 'numero' => $v->numero, 'motif' => $motif, 'date' => now()->format('Y-m-d H:i:s'), 'user_id' => auth()->id()]
+                + ($accord ? ['accordee_par' => $accord->id] : []));
+            JournalActivite::noter('annulation', "Annulation de la vente {$v->numero} : {$motif}"
+                .($accord ? ' — accordée par '.$accord->nomComplet().' (code du responsable)' : ''));
 
             return $v;
         });

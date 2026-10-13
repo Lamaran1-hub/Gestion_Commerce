@@ -25,7 +25,7 @@
             <a href="#series" class="btn btn-sm btn-warning">Saisir les numéros</a></div>
     @endif
     @if ($vente->statut === 'annulee')
-        <div class="alert alert-danger">Vente annulée le {{ $vente->annulee_le->format('d/m/Y H:i') }} : {{ $vente->motif_annulation }}. Le stock a été réintégré.</div>
+        <div class="alert alert-danger">Vente annulée le {{ $vente->annulee_le->format('d/m/Y H:i') }} : {{ $vente->motif_annulation }}. Le stock a été réintégré.@if ($vente->annulation_accordee_par) <span id="annulationAccordee"><i class="bi bi-key ms-1 me-1"></i>Accordée par {{ $vente->annulationAccordeePar?->nomComplet() ?? 'un responsable' }}.</span>@endif</div>
     @endif
 
     <div class="row g-4">
@@ -207,9 +207,13 @@
             @if ($vente->statut === 'validee' || $vente->livraison)
                 @include('partials.livraison-vente')
             @endif
-            @if ($vente->statut === 'validee')
-                @can('ventes.annuler')
-                    <form method="post" action="{{ route('ventes.annuler', $vente) }}" class="bloc bloc-corps mt-3" data-confirmer="Annuler cette vente ? Les produits seront remis en stock.">
+            @php
+                // Sans le droit d'annuler, un responsable peut l'accorder avec son code
+                $peutAnnuler = auth()->user()->aPermission('ventes.annuler');
+                $responsablesAnnulation = $vente->statut === 'validee' ? app(\App\Services\AccordResponsable::class)->responsables() : collect();
+            @endphp
+            @if ($vente->statut === 'validee' && ($peutAnnuler || $responsablesAnnulation->isNotEmpty()))
+                    <form method="post" action="{{ route('ventes.annuler', $vente) }}" id="formAnnulation" class="bloc bloc-corps mt-3" data-confirmer="Annuler cette vente ? Les produits seront remis en stock.">
                         @csrf
                         <h3 class="h6">Annuler la vente</h3>
                         <label class="form-label small text-doux mb-1" for="motif_annulation">Motif de l'annulation</label>
@@ -234,13 +238,25 @@
                         @elseif ($periodeClose)
                             <div class="small text-danger mb-2">Période clôturée jusqu'au {{ $verrou->format('d/m/Y') }} : cette vente ne peut plus être annulée.</div>
                         @elseif ($horsDelai)
-                            <div class="small text-danger mb-2">Vente de plus de {{ $delaiAnnulation }} h : seul l'administrateur peut l'annuler.</div>
+                            <div class="small text-danger mb-2">Vente de plus de {{ $delaiAnnulation }} h : seul l'administrateur peut l'annuler{{ $responsablesAnnulation->isNotEmpty() ? ', ou un responsable avec son code' : '' }}.</div>
                         @elseif ($delaiAnnulation)
                             <div class="small text-doux mb-2">Annulation possible jusqu'au {{ $vente->date_vente->copy()->addHours($delaiAnnulation)->format('d/m/Y à H:i') }}.</div>
                         @endif
-                        <button class="btn btn-sm btn-outline-danger" @disabled($periodeClose || $horsDelai || $repriseEnAvoir || $dejaLivree)>Annuler et remettre en stock</button>
+                        @php $besoinAccord = (! $peutAnnuler || $horsDelai) && ! $periodeClose && ! $repriseEnAvoir && ! $dejaLivree; @endphp
+                        @if ($besoinAccord && $responsablesAnnulation->isNotEmpty())
+                            <div class="p-2 rounded border mb-2" id="accordAnnulation">
+                                <div class="small fw-semibold mb-1"><i class="bi bi-key me-1"></i>Accord du responsable</div>
+                                <div class="d-flex gap-2">
+                                    <select name="responsable_id" class="form-select form-select-sm" aria-label="Responsable qui autorise l'annulation">
+                                        @foreach ($responsablesAnnulation as $r)<option value="{{ $r->id }}">{{ $r->nomComplet() }}</option>@endforeach
+                                    </select>
+                                    <input type="password" name="code_accord" class="form-control form-control-sm" style="max-width:140px;min-width:120px" inputmode="numeric" maxlength="6"
+                                           placeholder="Code" aria-label="Code du responsable" autocomplete="off" required>
+                                </div>
+                            </div>
+                        @endif
+                        <button class="btn btn-sm btn-outline-danger" @disabled($periodeClose || ($horsDelai && $responsablesAnnulation->isEmpty()) || $repriseEnAvoir || $dejaLivree)>Annuler et remettre en stock</button>
                     </form>
-                @endcan
             @endif
         </div>
     </div>

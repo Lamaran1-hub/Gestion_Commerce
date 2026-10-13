@@ -349,7 +349,12 @@ class VenteController extends Controller
             'motif' => ['required', 'string', 'max:250'],
             'motif_autre' => ['nullable', 'string', 'max:200'],
         ], ['motif.required' => "Indiquez le motif de l'annulation."]);
-        $this->service->annuler($vente, choix_autre('motif'));
+        // Sans le droit d'annuler (ou hors délai), un responsable peut l'autoriser avec son code
+        $accord = accord_responsable($request);
+        if (! $accord && ! $request->user()->aPermission('ventes.annuler')) {
+            throw new \App\Exceptions\OperationRefusee('Un responsable doit autoriser l\'annulation : choisissez son nom et faites-lui taper son code.');
+        }
+        $this->service->annuler($vente, choix_autre('motif'), $accord);
 
         // L'argent déjà encaissé doit être rendu au client : on le rappelle clairement
         return back()->with('succes', "La vente {$vente->numero} est annulée et le stock a été réintégré."

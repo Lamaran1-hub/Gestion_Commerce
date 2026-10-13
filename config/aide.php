@@ -255,13 +255,14 @@ return [
             ],
             'lien' => 'clotures.index', 'permission' => 'ventes.voir'],
 
-        'accord-responsable' => ['rubrique' => 'caisse', 'titre' => 'Accorder une remise avec le code du responsable',
-            'mots' => 'remise maximum accord responsable gérant code pin autoriser rabais réduction vendeur',
-            'resume' => 'Une remise au-delà du maximum passe si un responsable choisit son nom et tape son code sur la caisse.',
+        'accord-responsable' => ['rubrique' => 'caisse', 'titre' => 'Accorder une remise ou une annulation avec le code du responsable',
+            'mots' => 'remise maximum accord responsable gérant code pin autoriser rabais réduction vendeur annuler annulation délai',
+            'resume' => 'Une remise au-delà du maximum, ou l\'annulation d\'une vente par un vendeur, passe si un responsable choisit son nom et tape son code.',
             'etapes' => [
                 'Le responsable (administrateur ou gestionnaire des paramètres) choisit son code de 4 à 6 chiffres : Mon profil → « Code d\'accord du responsable ». Son mot de passe est demandé.',
                 'À la caisse, si la remise dépasse le maximum fixé dans les paramètres, la caisse affiche « Accord du responsable » : choisissez son nom, il tape son code, puis validez la vente.',
                 'Un vendeur sans droit de remise peut aussi en faire une : le responsable l\'accorde de la même façon.',
+                'Annuler une vente : sur la fiche de la vente, un vendeur sans droit d\'annulation (ou une vente plus ancienne que le délai fixé) affiche « Accord du responsable » : choisissez son nom, il tape son code, puis « Annuler et remettre en stock ».',
                 'L\'accord est inscrit sur la vente (« accordée par… ») et dans le journal d\'activité. Il vaut aussi pour un devis, puis pour la vente qui en découle.',
                 'Le prix d\'achat reste une limite : même avec le code, on ne vend pas à perte (sauf si la boutique l\'autorise). Après 5 codes faux, la saisie est bloquée 10 minutes.',
             ],
